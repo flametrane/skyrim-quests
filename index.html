@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>Журнал Заданий</title>
+
+<!-- PWA / iOS "Add to Home Screen" setup -->
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" href="icon-512.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Журнал" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#050607" />
+
+<!-- React + Babel (in-browser JSX) + Tailwind -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  html, body { margin: 0; padding: 0; background: #050607; min-height: 100%; }
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+
+// localStorage-backed shim for the window.storage API
+if (!window.storage) {
+  window.storage = {
+    get: async (key) => {
+      try {
+        const v = localStorage.getItem(key);
+        return v === null ? null : { key, value: v, shared: false };
+      } catch (e) { return null; }
+    },
+    set: async (key, value) => {
+      try {
+        localStorage.setItem(key, value);
+        return { key, value, shared: false };
+      } catch (e) { return null; }
+    },
+    delete: async (key) => {
+      try { localStorage.removeItem(key); return { key, deleted: true, shared: false }; }
+      catch (e) { return null; }
+    },
+    list: async (prefix = '') => {
+      try {
+        const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+        return { keys, prefix, shared: false };
+      } catch (e) { return null; }
+    },
+  };
+}
+
+
+// ---------- Helpers ----------
+const STORAGE_KEY = 'skyrim-journal-ru-v4';
+const uid = () => Math.random().toString(36).slice(2, 10);
+const XP_VALUES = { minor: 10, side: 25, main: 50 };
+const XP_FOR_LEVEL = (lvl) => Math.floor(100 * Math.pow(lvl, 1.35));
+
+const DAYS_RU = ['Сандас', 'Морндас', 'Тирдас', 'Миддас', 'Турдас', 'Фредас', 'Лордас'];
+const MONTHS_RU = [
+  'Утренней Звезды', 'Дождевых Рук', 'Первого Цветка', 'Цветения Земли',
+  'Заоблачного Покрова', 'Высокого Лета', 'Сердца Лета', 'Последнего Зерна',
+  'Заката Солнца', 'Утренней Тени', 'Морозной Руки', 'Заклятия Колдуна',
+];
+
+const defaultState = {
+  tab: 'quests',
+  xp: 0,
+  level: 1,
+  selectedQuestId: 'init-1',
+  quests: [
+    {
+      id: 'init-1',
+      title: 'Возвращение к корням',
+      category: 'misc',
+      type: 'side',
+      active: true,
+      done: false,
+      note: 'Личные дела на сегодня. Отмечай задачи по мере выполнения, чтобы получить опыт.',
+      objectives: [
+        { id: uid(), text: 'Сделать зарядку утром', done: false, optional: false },
+        { id: uid(), text: 'Разобрать почту и сообщения', done: false, optional: false },
+        { id: uid(), text: 'Подготовить отчёт для встречи', done: false, optional: false },
+        { id: uid(), text: 'Позвонить родителям', done: false, optional: true },
+      ],
+    },
+    {
+      id: 'init-2',
+      title: 'Рассвет с пользой',
+      category: 'misc',
+      type: 'side',
+      active: false,
+      done: false,
+      note: 'Утренний ритуал для бодрого начала дня.',
+      objectives: [
+        { id: uid(), text: 'Проснуться до 7:00', done: false, optional: false },
+        { id: uid(), text: 'Медитация 10 минут', done: false, optional: false },
+      ],
+    },
+    {
+      id: 'init-3',
+      title: 'Драконорождённый',
+      category: 'main',
+      type: 'main',
+      active: false,
+      done: false,
+      note: 'Главное дело дня — то, без чего день не будет считаться удавшимся.',
+      objectives: [
+        { id: uid(), text: 'Завершить самую важную задачу дня', done: false, optional: false },
+      ],
+    },
+  ],
+  notes: [],
+};
+
+// ---------- Decorative pieces ----------
+
+const CornerFlourish = ({ corner }) => {
+  const transforms = {
+    tl: '', tr: 'scale(-1,1) translate(-100,0)', bl: 'scale(1,-1) translate(0,-100)', br: 'scale(-1,-1) translate(-100,-100)',
+  };
+  const pos = { tl: 'top-0 left-0', tr: 'top-0 right-0', bl: 'bottom-0 left-0', br: 'bottom-0 right-0' };
+  return (
+    <svg className={`absolute ${pos[corner]} w-10 h-10 sm:w-14 sm:h-14 pointer-events-none z-10`} viewBox="0 0 100 100">
+      <g transform={transforms[corner]} stroke="#ffffff" strokeWidth="1" fill="none" opacity="0.8">
+        <path d="M14 2 Q 2 2 2 14" />
+        <path d="M2 22 Q 30 22 30 50" />
+        <path d="M22 2 Q 22 30 50 30" />
+        <path d="M2 14 L2 40" strokeWidth="0.7" opacity="0.5" />
+        <path d="M14 2 L40 2" strokeWidth="0.7" opacity="0.5" />
+        <circle cx="6" cy="6" r="1.4" fill="#ffffff" stroke="none" />
+      </g>
+    </svg>
+  );
+};
+
+// Horizontal double-line bar (thin, like the game's section separators)
+const DoubleBar = () => (
+  <div className="relative h-[6px] mx-4 sm:mx-6">
+    <div className="absolute top-0 left-0 right-0 h-[1px] bg-white/65" />
+    <div className="absolute bottom-[1px] left-0 right-0 h-[1px] bg-white/30" />
+  </div>
+);
+
+// Vertical double-line divider with diamond marker at the top, where it meets the horizontal DoubleBar
+const VerticalDoubleBar = () => (
+  <div className="hidden sm:flex relative px-[5px] my-5">
+    <svg className="absolute -top-[7px] left-1/2 -translate-x-1/2 z-10" width="14" height="14" viewBox="0 0 14 14">
+      <rect x="2" y="2" width="10" height="10" transform="rotate(45 7 7)" fill="#070809" stroke="#ffffff" strokeWidth="1.2" />
+    </svg>
+    <div className="flex gap-[3px] h-full">
+      <div className="w-[1px] h-full bg-white/55" />
+      <div className="w-[1px] h-full bg-white/25" />
+    </div>
+  </div>
+);
+
+const ArrowMark = ({ direction = 'left', active }) => (
+  <svg width="13" height="13" viewBox="0 0 14 14" className={direction === 'right' ? 'rotate-180' : ''}>
+    <path d="M9 1 L3 7 L9 13" fill="none" stroke={active ? '#ffffff' : '#7d8896'} strokeWidth="1.3" />
+  </svg>
+);
+
+const Diamond = ({ filled, optional }) => (
+  <svg width="13" height="13" viewBox="0 0 14 14" className="shrink-0 mt-[3px]">
+    <rect x="2" y="2" width="10" height="10" transform="rotate(45 7 7)"
+      fill={filled ? '#ffffff' : 'transparent'}
+      stroke={optional ? '#6e7986' : '#ffffff'} strokeWidth="1.1" />
+  </svg>
+);
+
+// Ornamental flanking piece: line — diamond — line — arrow tip — short line.
+// flip mirrors it so the arrow points outward on the opposite side.
+const FlankOrnament = ({ flip, long }) => (
+  <svg width={long ? 90 : 60} height="14" viewBox={`0 0 ${long ? 90 : 60} 14`} className={flip ? 'scale-x-[-1]' : ''} preserveAspectRatio="none">
+    <g stroke="#ffffff" strokeWidth="1" fill="none" opacity="0.75">
+      <line x1="0" y1="7" x2={long ? 64 : 40} y2="7" />
+      <rect x={(long ? 64 : 40) - 26} y="4" width="6" height="6" transform={`rotate(45 ${(long ? 64 : 40) - 23} 7)`} />
+      {long && <rect x={(long ? 64 : 40) - 44} y="4" width="6" height="6" transform={`rotate(45 ${(long ? 64 : 40) - 41} 7)`} />}
+      <path d={`M${long ? 64 : 40} 1 L${(long ? 64 : 40) + 14} 7 L${long ? 64 : 40} 13 Z`} />
+      <line x1={(long ? 64 : 40) + 14} y1="7" x2={long ? 90 : 60} y2="7" />
+    </g>
+  </svg>
+);
+
+// Centered heading flanked symmetrically by ornaments — used for "ЗАДАЧИ" and quest titles
+const FlankedHeading = ({ children, size = 'normal', long = false }) => (
+  <div className="flex items-center justify-center gap-2 sm:gap-3 my-1">
+    <FlankOrnament long={long} />
+    <h2 className={`font-display tracking-[0.18em] text-white uppercase whitespace-nowrap ${size === 'large' ? 'text-base sm:text-2xl' : 'text-xs sm:text-base'}`}>
+      {children}
+    </h2>
+    <FlankOrnament flip long={long} />
+  </div>
+);
+
+// ---------- Main component ----------
+function SkyrimJournalV4() {
+  const [state, setState] = useState(defaultState);
+  const [loaded, setLoaded] = useState(false);
+  const [now, setNow] = useState(new Date());
+  const [levelUp, setLevelUp] = useState(false);
+  const [addQuestOpen, setAddQuestOpen] = useState(false);
+  const [addObjOpen, setAddObjOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [editingNote, setEditingNote] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
+
+  const [newQuestTitle, setNewQuestTitle] = useState('');
+  const [newQuestNote, setNewQuestNote] = useState('');
+  const [newQuestType, setNewQuestType] = useState('side');
+  const [newQuestCategory, setNewQuestCategory] = useState('misc');
+  const [newObjectiveText, setNewObjectiveText] = useState('');
+  const [newObjectiveOptional, setNewObjectiveOptional] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(STORAGE_KEY);
+        if (res && res.value) setState({ ...defaultState, ...JSON.parse(res.value) });
+      } catch (e) {}
+      finally { setLoaded(true); }
+    })();
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    window.storage.set(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+  }, [state, loaded]);
+
+  const xpNeeded = useMemo(() => XP_FOR_LEVEL(state.level), [state.level]);
+
+  const addXp = (amount) => {
+    setState((prev) => {
+      let xp = prev.xp + amount;
+      let level = prev.level;
+      let leveled = false;
+      while (xp >= XP_FOR_LEVEL(level)) {
+        xp -= XP_FOR_LEVEL(level);
+        level += 1;
+        leveled = true;
+      }
+      if (xp < 0) {
+        while (xp < 0 && level > 1) {
+          level -= 1;
+          xp += XP_FOR_LEVEL(level);
+        }
+        if (xp < 0) xp = 0;
+      }
+      if (leveled) {
+        setLevelUp(true);
+        setTimeout(() => setLevelUp(false), 2000);
+      }
+      return { ...prev, xp, level };
+    });
+  };
+
+  const selectedQuest = state.quests.find((q) => q.id === state.selectedQuestId) || state.quests[0];
+
+  const toggleObjective = (questId, objId) => {
+    setState((prev) => {
+      const quests = prev.quests.map((q) => {
+        if (q.id !== questId) return q;
+        const objectives = q.objectives.map((o) => {
+          if (o.id !== objId) return o;
+          const done = !o.done;
+          addXp(done ? 5 : -5);
+          return { ...o, done };
+        });
+        const allDone = objectives.length > 0 && objectives.filter((o) => !o.optional).every((o) => o.done);
+        if (allDone && !q.done) addXp(XP_VALUES[q.type] || 25);
+        else if (!allDone && q.done) addXp(-(XP_VALUES[q.type] || 25));
+        return { ...q, objectives, done: allDone };
+      });
+      return { ...prev, quests };
+    });
+  };
+
+  const toggleActive = (questId) => {
+    setState((prev) => ({ ...prev, quests: prev.quests.map((q) => (q.id === questId ? { ...q, active: !q.active } : q)) }));
+  };
+
+  const selectQuest = (id) => setState((prev) => ({ ...prev, selectedQuestId: id }));
+
+  const addQuest = () => {
+    if (!newQuestTitle.trim()) return;
+    const id = uid();
+    setState((prev) => ({
+      ...prev,
+      quests: [...prev.quests, { id, title: newQuestTitle.trim(), category: newQuestCategory, type: newQuestType, active: false, done: false, note: newQuestNote.trim(), objectives: [] }],
+      selectedQuestId: id,
+    }));
+    setNewQuestTitle(''); setNewQuestNote(''); setAddQuestOpen(false);
+  };
+
+  const deleteQuest = (id) => {
+    setState((prev) => {
+      const quests = prev.quests.filter((q) => q.id !== id);
+      return { ...prev, quests, selectedQuestId: prev.selectedQuestId === id ? (quests[0]?.id ?? null) : prev.selectedQuestId };
+    });
+    setConfirmDelete(null);
+  };
+
+  const addObjective = () => {
+    if (!newObjectiveText.trim() || !selectedQuest) return;
+    setState((prev) => ({
+      ...prev,
+      quests: prev.quests.map((q) => q.id === selectedQuest.id
+        ? { ...q, objectives: [...q.objectives, { id: uid(), text: newObjectiveText.trim(), done: false, optional: newObjectiveOptional }], done: false }
+        : q),
+    }));
+    setNewObjectiveText(''); setNewObjectiveOptional(false); setAddObjOpen(false);
+  };
+
+  const deleteObjective = (objId) => {
+    if (!selectedQuest) return;
+    setState((prev) => ({
+      ...prev,
+      quests: prev.quests.map((q) => q.id === selectedQuest.id ? { ...q, objectives: q.objectives.filter((o) => o.id !== objId) } : q),
+    }));
+  };
+
+  const saveNote = () => {
+    if (!selectedQuest) return;
+    setState((prev) => ({ ...prev, quests: prev.quests.map((q) => q.id === selectedQuest.id ? { ...q, note: noteDraft } : q) }));
+    setEditingNote(false);
+  };
+
+  const mainQuests = state.quests.filter((q) => q.category === 'main');
+  const miscQuests = state.quests.filter((q) => q.category === 'misc');
+
+  const dayName = DAYS_RU[now.getDay()];
+  const monthName = MONTHS_RU[now.getMonth()];
+  const timeStr = now.toLocaleTimeString('ru-RU', { hour: 'numeric', minute: '2-digit' });
+
+  const totalObjectives = state.quests.reduce((acc, q) => acc + q.objectives.length, 0);
+  const doneObjectives = state.quests.reduce((acc, q) => acc + q.objectives.filter((o) => o.done).length, 0);
+  const doneQuestsCount = state.quests.filter((q) => q.done).length;
+  const totalQuests = state.quests.length;
+  const percent = totalQuests > 0 ? Math.round((doneQuestsCount / totalQuests) * 100) : 0;
+
+  const TABS = [
+    { key: 'quests', label: 'ЗАДАНИЯ' },
+    { key: 'stats', label: 'СТАТИСТИКА' },
+    { key: 'system', label: 'СИСТЕМА' },
+  ];
+
+  return (
+    <div className="min-h-screen w-full text-white relative overflow-x-hidden bg-[#050607]">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap');
+        /* Closest free web-font match to Futura Condensed / Eurostile */
+        .font-display { font-family: 'Oswald', 'Eurostile', 'Futura Condensed', 'Arial Narrow', sans-serif; }
+        .font-body { font-family: 'Oswald', 'Eurostile', 'Futura Condensed', 'Arial Narrow', sans-serif; font-weight: 300; }
+        .bg-vignette {
+          background:
+            radial-gradient(ellipse at 50% 35%, rgba(35,42,40,0.55) 0%, rgba(8,10,11,0.96) 55%, #000 100%);
+        }
+      `}</style>
+
+      {levelUp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="px-10 py-6 border-y border-white bg-black/90">
+            <p className="font-display text-2xl text-center text-white tracking-[0.3em]">УРОВЕНЬ ПОВЫШЕН</p>
+            <p className="font-display text-base text-center mt-1 text-white/60 tracking-[0.3em]">УРОВЕНЬ {state.level}</p>
+          </div>
+        </div>
+      )}
+
+      {addQuestOpen && (
+        <Modal onClose={() => setAddQuestOpen(false)} title="НОВОЕ ЗАДАНИЕ">
+          <div className="space-y-3">
+            <Field label="Название">
+              <input autoFocus value={newQuestTitle} onChange={(e) => setNewQuestTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addQuest()}
+                className="w-full bg-transparent border-b border-white/30 focus:border-white outline-none py-1.5 text-base text-white font-body" />
+            </Field>
+            <Field label="Описание (необязательно)">
+              <textarea value={newQuestNote} onChange={(e) => setNewQuestNote(e.target.value)} rows={2}
+                className="w-full bg-transparent border-b border-white/30 focus:border-white outline-none py-1.5 text-sm text-white/80 resize-none font-body" />
+            </Field>
+            <div className="flex gap-4">
+              <Field label="Раздел">
+                <select value={newQuestCategory} onChange={(e) => setNewQuestCategory(e.target.value)}
+                  className="w-full bg-black border border-white/25 outline-none py-1.5 px-2 text-sm text-white font-body">
+                  <option value="misc">Дополнительное</option>
+                  <option value="main">Основное</option>
+                </select>
+              </Field>
+              <Field label="Сложность">
+                <select value={newQuestType} onChange={(e) => setNewQuestType(e.target.value)}
+                  className="w-full bg-black border border-white/25 outline-none py-1.5 px-2 text-sm text-white font-body">
+                  <option value="minor">Малое (+{XP_VALUES.minor} XP)</option>
+                  <option value="side">Побочное (+{XP_VALUES.side} XP)</option>
+                  <option value="main">Основное (+{XP_VALUES.main} XP)</option>
+                </select>
+              </Field>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <SkyrimButton onClick={() => setAddQuestOpen(false)} variant="ghost">ОТМЕНА</SkyrimButton>
+              <SkyrimButton onClick={addQuest}>СОЗДАТЬ</SkyrimButton>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {addObjOpen && (
+        <Modal onClose={() => setAddObjOpen(false)} title="НОВАЯ ЗАДАЧА">
+          <div className="space-y-3">
+            <Field label="Текст задачи">
+              <input autoFocus value={newObjectiveText} onChange={(e) => setNewObjectiveText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addObjective()}
+                className="w-full bg-transparent border-b border-white/30 focus:border-white outline-none py-1.5 text-base text-white font-body" />
+            </Field>
+            <label className="flex items-center gap-2 text-sm text-white/60 cursor-pointer font-body">
+              <input type="checkbox" checked={newObjectiveOptional} onChange={(e) => setNewObjectiveOptional(e.target.checked)} />
+              Необязательная задача
+            </label>
+            <div className="flex justify-end gap-3 pt-2">
+              <SkyrimButton onClick={() => setAddObjOpen(false)} variant="ghost">ОТМЕНА</SkyrimButton>
+              <SkyrimButton onClick={addObjective}>ДОБАВИТЬ</SkyrimButton>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal onClose={() => setConfirmDelete(null)} title="УДАЛИТЬ ЗАДАНИЕ?">
+          <p className="text-sm text-white/80 mb-4 font-body">«{confirmDelete.title}» будет удалено без возможности восстановления.</p>
+          <div className="flex justify-end gap-3">
+            <SkyrimButton onClick={() => setConfirmDelete(null)} variant="ghost">ОТМЕНА</SkyrimButton>
+            <SkyrimButton onClick={() => deleteQuest(confirmDelete.id)} variant="danger">УДАЛИТЬ</SkyrimButton>
+          </div>
+        </Modal>
+      )}
+
+      <div className="min-h-screen bg-vignette flex flex-col items-center justify-center p-3 sm:p-6 font-body">
+        {/* ===== Main rounded frame ===== */}
+        <div className="relative w-full max-w-5xl rounded-[28px] border border-white/45 bg-black/80 overflow-hidden">
+          <CornerFlourish corner="tl" />
+          <CornerFlourish corner="tr" />
+          <CornerFlourish corner="bl" />
+          <CornerFlourish corner="br" />
+
+          {/* Top tab bar — separated and outlined, as in the reference */}
+          <div className="px-6 sm:px-10 pt-4 pb-3">
+            <div className="border border-white/30 px-4 py-2.5">
+              <div className="flex items-center justify-center gap-8 sm:gap-16">
+                {TABS.map((tabDef, i) => (
+                  <button key={tabDef.key} onClick={() => setState((p) => ({ ...p, tab: tabDef.key }))} className="flex items-center gap-2 group">
+                    {i === 0 && <ArrowMark direction="left" active={state.tab === tabDef.key} />}
+                    <span className={`font-display text-xs sm:text-base tracking-[0.25em] ${state.tab === tabDef.key ? 'text-white' : 'text-white/35 group-hover:text-white/70'}`}>
+                      {tabDef.label}
+                    </span>
+                    {i === 0 && <ArrowMark direction="right" active={state.tab === tabDef.key} />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DoubleBar />
+
+          {/* ===== QUESTS TAB ===== */}
+          {state.tab === 'quests' && (
+            <div className="flex flex-col sm:flex-row min-h-[400px] relative">
+              {/* Left column */}
+              <div className="sm:w-[36%] px-6 sm:px-8 py-5 flex flex-col relative">
+                <div className="flex-1 space-y-2 overflow-y-auto max-h-[340px] pr-1">
+                  {mainQuests.length > 0 && (
+                    <>
+                      <p className="font-display text-[9px] tracking-[0.3em] text-white/35 mb-1">ОСНОВНЫЕ</p>
+                      {mainQuests.map((q) => <QuestListItem key={q.id} q={q} selected={selectedQuest?.id === q.id} onSelect={selectQuest} />)}
+                      <div className="h-2" />
+                    </>
+                  )}
+                  {miscQuests.length > 0 && (
+                    <>
+                      <p className="font-display text-[9px] tracking-[0.3em] text-white/35 mb-1">ДОПОЛНИТЕЛЬНЫЕ</p>
+                      {miscQuests.map((q) => <QuestListItem key={q.id} q={q} selected={selectedQuest?.id === q.id} onSelect={selectQuest} />)}
+                    </>
+                  )}
+                  {state.quests.length === 0 && <p className="text-sm italic text-white/35 py-6 text-center">Список заданий пуст</p>}
+                </div>
+                <button onClick={() => setAddQuestOpen(true)}
+                  className="mt-3 font-display text-[11px] tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 py-2 transition-colors">
+                  + НОВОЕ ЗАДАНИЕ
+                </button>
+              </div>
+
+              {/* Vertical double-line divider with diamond marker */}
+              <VerticalDoubleBar />
+
+              {/* Right column */}
+              <div className="flex-1 px-6 sm:px-8 py-5 flex flex-col">
+                {selectedQuest ? (
+                  <>
+                    <FlankedHeading size="large" long>{selectedQuest.title}</FlankedHeading>
+
+                    {/* Note / journal text (above tasks) */}
+                    {editingNote ? (
+                      <div className="mb-2 mt-2">
+                        <textarea
+                          autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} rows={3}
+                          className="w-full bg-transparent border border-white/25 focus:border-white/60 outline-none px-2 py-1.5 text-sm sm:text-base text-white resize-none leading-snug font-body"
+                        />
+                        <div className="flex justify-end gap-2 mt-1">
+                          <SkyrimButton onClick={() => setEditingNote(false)} variant="ghost">ОТМЕНА</SkyrimButton>
+                          <SkyrimButton onClick={saveNote}>СОХРАНИТЬ</SkyrimButton>
+                        </div>
+                      </div>
+                    ) : (
+                      <p
+                        onClick={() => { setNoteDraft(selectedQuest.note || ''); setEditingNote(true); }}
+                        className="text-sm sm:text-base leading-snug text-white/95 mb-2 mt-2 max-w-2xl cursor-text hover:text-white transition-colors font-body"
+                        title="Нажмите, чтобы редактировать заметку"
+                      >
+                        {selectedQuest.note || <span className="italic text-white/35">Нажмите, чтобы добавить заметку…</span>}
+                      </p>
+                    )}
+
+                    <FlankedHeading>ЗАДАЧИ</FlankedHeading>
+
+                    <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[220px] pr-1 mt-1">
+                      {selectedQuest.objectives.length === 0 && (
+                        <p className="text-sm italic text-white/35 py-1 font-body">Пока нет задач — добавьте первую.</p>
+                      )}
+                      {selectedQuest.objectives.map((o) => (
+                        <div key={o.id} className="flex items-start gap-2 group">
+                          <button onClick={() => toggleObjective(selectedQuest.id, o.id)} className="shrink-0 mt-[1px]">
+                            <Diamond filled={o.done} optional={o.optional} />
+                          </button>
+                          <span className={`text-sm sm:text-base leading-snug font-body ${o.done ? 'line-through text-white/30' : o.optional ? 'text-white/45 italic' : 'text-white/65'}`}>
+                            {o.text}
+                          </span>
+                          <button onClick={() => deleteObjective(o.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-white/35 hover:text-red-300 text-xs transition-opacity shrink-0">✕</button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button onClick={() => setAddObjOpen(true)}
+                      className="self-start mt-2 font-display text-[11px] tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 px-4 py-1.5 transition-colors">
+                      + ЗАДАЧА
+                    </button>
+
+                    {selectedQuest.done && <p className="mt-2 font-display text-sm tracking-[0.3em] text-white">ЗАДАНИЕ ВЫПОЛНЕНО</p>}
+                  </>
+                ) : (
+                  <p className="text-center italic text-white/35 py-12 font-body">Выберите задание слева</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ===== STATS TAB ===== */}
+          {state.tab === 'stats' && (
+            <div className="px-6 sm:px-10 py-6">
+              <FlankedHeading size="large" long>Сводка персонажа</FlankedHeading>
+              <p className="text-sm sm:text-base leading-snug text-white/95 mb-2 mt-2 max-w-2xl font-body">
+                Уровень растёт за счёт выполненных задач и заданий. Чем сложнее задание — тем больше опыта.
+              </p>
+              <FlankedHeading>ХАРАКТЕРИСТИКИ</FlankedHeading>
+              <div className="grid sm:grid-cols-2 gap-8 mt-3">
+                <div>
+                  <p className="font-display text-sm tracking-[0.2em] text-white/70 mb-2">УРОВЕНЬ {state.level}</p>
+                  <div className="h-2 w-full bg-black/40 border border-white/25 overflow-hidden">
+                    <div className="h-full bg-white" style={{ width: `${Math.min(100, Math.round((state.xp / xpNeeded) * 100))}%` }} />
+                  </div>
+                  <p className="text-sm text-white/55 mt-1 font-body">{state.xp} / {xpNeeded} опыта</p>
+                </div>
+                <div className="space-y-1.5 text-sm sm:text-base font-body">
+                  <StatRow label="Всего заданий" value={totalQuests} />
+                  <StatRow label="Выполнено заданий" value={doneQuestsCount} />
+                  <StatRow label="Задачи выполнены" value={`${doneObjectives} / ${totalObjectives}`} />
+                  <StatRow label="Завершено" value={`${percent}%`} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== SYSTEM / NOTES TAB ===== */}
+          {state.tab === 'system' && (
+            <SystemTab state={state} setState={setState} />
+          )}
+
+          <DoubleBar />
+
+          {/* Bottom bar */}
+          <div className="px-6 sm:px-10 py-2.5 flex items-center justify-between text-[10px] sm:text-xs font-display">
+            <div className="flex gap-4 sm:gap-6">
+              {state.tab === 'quests' && selectedQuest && (
+                <button onClick={() => toggleActive(selectedQuest.id)} className="tracking-[0.15em] text-white/55 hover:text-white">
+                  <span className="border border-white/30 px-1.5 py-0.5 mr-1">Enter</span>
+                  {selectedQuest.active ? 'Снять отслеживание' : 'Отслеживать'}
+                </button>
+              )}
+              {state.tab === 'quests' && selectedQuest && (
+                <button onClick={() => setConfirmDelete(selectedQuest)} className="tracking-[0.15em] text-white/35 hover:text-red-300">
+                  Удалить
+                </button>
+              )}
+            </div>
+            <span className="tracking-[0.15em] text-white/55">
+              {dayName}, {timeStr}, {now.getDate()}-е {monthName}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SystemTab({ state, setState }) {
+  const [newNote, setNewNote] = useState('');
+  const addNote = () => {
+    if (!newNote.trim()) return;
+    setState((prev) => ({ ...prev, notes: [{ id: uid(), text: newNote.trim(), createdAt: Date.now() }, ...prev.notes] }));
+    setNewNote('');
+  };
+  const deleteNote = (id) => setState((prev) => ({ ...prev, notes: prev.notes.filter((n) => n.id !== id) }));
+
+  return (
+    <div className="px-6 sm:px-10 py-6">
+      <FlankedHeading size="large" long>Дневник</FlankedHeading>
+      <FlankedHeading>НОВАЯ ЗАПИСЬ</FlankedHeading>
+      <div className="flex gap-2 mb-4 mt-3 max-w-2xl">
+        <textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Запишите мысль, идею или напоминание..." rows={2}
+          className="flex-1 bg-transparent border border-white/25 focus:border-white/60 outline-none px-3 py-2 text-sm sm:text-base text-white placeholder:text-white/35 resize-none font-body" />
+        <SkyrimButton onClick={addNote}>ЗАПИСАТЬ</SkyrimButton>
+      </div>
+      {state.notes.length === 0 ? (
+        <p className="italic text-white/35 font-body">Страницы дневника пока пусты.</p>
+      ) : (
+        <div className="space-y-2 max-w-2xl max-h-[260px] overflow-y-auto pr-1">
+          {state.notes.map((n) => (
+            <div key={n.id} className="border border-white/15 p-3 flex justify-between gap-3">
+              <div>
+                <p className="text-sm sm:text-base whitespace-pre-wrap text-white/90 font-body">{n.text}</p>
+                <p className="text-xs text-white/35 mt-1 font-body">{new Date(n.createdAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+              </div>
+              <button onClick={() => deleteNote(n.id)} className="text-white/35 hover:text-red-300 text-xs shrink-0">✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatRow({ label, value }) {
+  return (
+    <div className="flex justify-between border-b border-white/10 pb-1">
+      <span className="text-white/55">{label}</span>
+      <span className="text-white font-display tracking-wider">{value}</span>
+    </div>
+  );
+}
+
+function QuestListItem({ q, selected, onSelect }) {
+  return (
+    <button onClick={() => onSelect(q.id)}
+      className={`w-full text-left flex items-center justify-between gap-2 py-0.5 font-display tracking-[0.1em] transition-colors uppercase ${
+        selected ? 'text-white text-sm sm:text-base font-medium' : q.done ? 'text-white/30 line-through text-[11px] sm:text-sm' : 'text-white/55 hover:text-white/85 text-[11px] sm:text-sm'
+      }`}>
+      <span className="truncate flex items-center gap-1.5">
+        {q.active && <span className="w-1.5 h-1.5 rotate-45 bg-white shrink-0" />}
+        {q.title}
+      </span>
+      {selected && <ArrowMark direction="right" active />}
+    </button>
+  );
+}
+
+function Modal({ title, children, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div className="w-full max-w-md bg-[#050607] border border-white/40 rounded-2xl p-5 font-body" onClick={(e) => e.stopPropagation()}>
+        <FlankedHeading>{title}</FlankedHeading>
+        <div className="mt-3">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <div className="flex-1">
+      <p className="font-display text-[9px] tracking-[0.25em] text-white/40 mb-1">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function SkyrimButton({ children, onClick, variant = 'primary' }) {
+  const styles = {
+    primary: 'border-white/70 text-white hover:bg-white/10',
+    ghost: 'border-white/25 text-white/55 hover:text-white hover:border-white/60',
+    danger: 'border-red-400/60 text-red-300 hover:bg-red-400/10',
+  };
+  return (
+    <button onClick={onClick} className={`font-display text-[11px] tracking-[0.2em] border px-4 py-2 transition-colors ${styles[variant]}`}>
+      {children}
+    </button>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<SkyrimJournalV4 />);
+
+</script>
+</body>
+</html>
