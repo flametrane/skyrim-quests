@@ -23,14 +23,6 @@
 
 <style>
   html, body { margin: 0; padding: 0; background: #050607; height: 100%; overflow: hidden; }
-  body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-    -webkit-tap-highlight-color: transparent;
-    overscroll-behavior: none;
-  }
   #root { height: 100%; }
 </style>
 </head>
@@ -160,16 +152,6 @@ const DoubleBar = () => (
   </div>
 );
 
-// Horizontal divider between the two stacked panes on mobile (with diamond marker)
-const MobileSectionDivider = () => (
-  <div className="sm:hidden relative px-4 shrink-0">
-    <DoubleBar />
-    <svg className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10" width="14" height="14" viewBox="0 0 14 14">
-      <rect x="2" y="2" width="10" height="10" transform="rotate(45 7 7)" fill="#070809" stroke="#ffffff" strokeWidth="1.2" />
-    </svg>
-  </div>
-);
-
 // Vertical double-line divider between columns on desktop/landscape, with diamond marker at top
 const VerticalDoubleBar = () => (
   <div className="hidden sm:flex relative px-[5px] my-5 shrink-0">
@@ -210,11 +192,12 @@ const FlankOrnament = ({ flip, long }) => (
   </svg>
 );
 
-// Centered heading flanked symmetrically by ornaments
+// Centered heading flanked symmetrically by ornaments.
+// Sizes: mobile gets a bump (per request), desktop/landscape kept at original V4 sizes.
 const FlankedHeading = ({ children, size = 'normal', long = false }) => (
   <div className="flex items-center justify-center gap-2 sm:gap-3 my-1 shrink-0">
     <FlankOrnament long={long} />
-    <h2 className={`font-display tracking-[0.18em] text-white uppercase whitespace-nowrap ${size === 'large' ? 'text-lg sm:text-2xl' : 'text-sm sm:text-lg'}`}>
+    <h2 className={`font-display tracking-[0.18em] text-white uppercase whitespace-nowrap ${size === 'large' ? 'text-lg sm:text-2xl' : 'text-sm sm:text-base'}`}>
       {children}
     </h2>
     <FlankOrnament flip long={long} />
@@ -236,6 +219,7 @@ function App() {
   const [titleDraft, setTitleDraft] = useState('');
   const [editingObjId, setEditingObjId] = useState(null);
   const [objDraft, setObjDraft] = useState('');
+  const [mobileView, setMobileView] = useState('list'); // 'list' | 'detail' — mobile master/detail nav
 
   const [newQuestTitle, setNewQuestTitle] = useState('');
   const [newQuestNote, setNewQuestNote] = useState('');
@@ -267,6 +251,11 @@ function App() {
     setEditingObjId(null);
   }, [state.selectedQuestId]);
 
+  // Reset mobile master/detail view when switching top-level tabs
+  useEffect(() => {
+    setMobileView('list');
+  }, [state.tab]);
+
   const xpNeeded = useMemo(() => XP_FOR_LEVEL(state.level), [state.level]);
 
   const addXp = (amount) => {
@@ -296,22 +285,21 @@ function App() {
 
   const selectedQuest = state.quests.find((q) => q.id === state.selectedQuestId) || state.quests[0];
 
-  // --- New XP rules ---
   // Each objective grants the quest's own XP value (minor/side/main).
   // Completing the quest grants the SUM of all objectives' XP (objectives.length * questXp).
   const toggleObjective = (questId, objId) => {
     setState((prev) => {
       const quests = prev.quests.map((q) => {
         if (q.id !== questId) return q;
-        const questXp = XP_VALUES[q.type] || 25;
+        const qXp = XP_VALUES[q.type] || 25;
         const objectives = q.objectives.map((o) => {
           if (o.id !== objId) return o;
           const done = !o.done;
-          addXp(done ? questXp : -questXp);
+          addXp(done ? qXp : -qXp);
           return { ...o, done };
         });
         const allDone = objectives.length > 0 && objectives.filter((o) => !o.optional).every((o) => o.done);
-        const bonus = objectives.length * questXp;
+        const bonus = objectives.length * qXp;
         if (allDone && !q.done) addXp(bonus);
         else if (!allDone && q.done) addXp(-bonus);
         return { ...q, objectives, done: allDone };
@@ -325,6 +313,10 @@ function App() {
   };
 
   const selectQuest = (id) => setState((prev) => ({ ...prev, selectedQuestId: id }));
+  const selectQuestMobile = (id) => {
+    selectQuest(id);
+    setMobileView('detail');
+  };
 
   const addQuest = () => {
     if (!newQuestTitle.trim()) return;
@@ -343,6 +335,7 @@ function App() {
       return { ...prev, quests, selectedQuestId: prev.selectedQuestId === id ? (quests[0]?.id ?? null) : prev.selectedQuestId };
     });
     setConfirmDelete(null);
+    setMobileView('list');
   };
 
   const addObjective = () => {
@@ -393,8 +386,10 @@ function App() {
     setEditingObjId(null);
   };
 
-  const mainQuests = state.quests.filter((q) => q.category === 'main');
-  const miscQuests = state.quests.filter((q) => q.category === 'misc');
+  // Group quests: active by category, plus a combined "completed" section
+  const activeMain = state.quests.filter((q) => q.category === 'main' && !q.done);
+  const activeMisc = state.quests.filter((q) => q.category === 'misc' && !q.done);
+  const completedQuests = state.quests.filter((q) => q.done);
 
   const dayName = DAYS_RU[now.getDay()];
   const monthName = MONTHS_RU[now.getMonth()];
@@ -402,7 +397,7 @@ function App() {
 
   const totalObjectives = state.quests.reduce((acc, q) => acc + q.objectives.length, 0);
   const doneObjectives = state.quests.reduce((acc, q) => acc + q.objectives.filter((o) => o.done).length, 0);
-  const doneQuestsCount = state.quests.filter((q) => q.done).length;
+  const doneQuestsCount = completedQuests.length;
   const totalQuests = state.quests.length;
   const percent = totalQuests > 0 ? Math.round((doneQuestsCount / totalQuests) * 100) : 0;
 
@@ -415,11 +410,44 @@ function App() {
     { key: 'system', label: 'СИСТЕМА' },
   ];
 
+  const titleEdit = {
+    editing: editingTitle,
+    draft: titleDraft,
+    setDraft: setTitleDraft,
+    start: () => { setTitleDraft(selectedQuest.title); setEditingTitle(true); },
+    save: saveTitle,
+    cancel: () => setEditingTitle(false),
+  };
+  const noteEdit = {
+    editing: editingNote,
+    draft: noteDraft,
+    setDraft: setNoteDraft,
+    start: () => { setNoteDraft(selectedQuest.note || ''); setEditingNote(true); },
+    save: saveNote,
+    cancel: () => setEditingNote(false),
+  };
+  const objEdit = {
+    editingId: editingObjId,
+    draft: objDraft,
+    setDraft: setObjDraft,
+    start: (o) => { setObjDraft(o.text); setEditingObjId(o.id); },
+    save: saveObjective,
+    cancel: () => setEditingObjId(null),
+  };
+
   return (
-    <div className="h-screen h-[100dvh] w-full text-white relative bg-[#050607] overflow-hidden">
+    <div className="h-full w-full text-white relative bg-[#050607] overflow-hidden">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap');
         html, body { height: 100%; margin: 0; padding: 0; background: #050607; overflow: hidden; }
+        body {
+          padding-top: calc(env(safe-area-inset-top) + 6px);
+          padding-bottom: calc(env(safe-area-inset-bottom) + 6px);
+          padding-left: env(safe-area-inset-left);
+          padding-right: env(safe-area-inset-right);
+          -webkit-tap-highlight-color: transparent;
+          overscroll-behavior: none;
+        }
         #root { height: 100%; }
         .font-display { font-family: 'Oswald', 'Eurostile', 'Futura Condensed', 'Arial Narrow', sans-serif; }
         .font-body { font-family: 'Oswald', 'Eurostile', 'Futura Condensed', 'Arial Narrow', sans-serif; font-weight: 300; }
@@ -508,7 +536,7 @@ function App() {
         </Modal>
       )}
 
-      <div className="h-full bg-vignette flex flex-col items-center p-2 sm:p-4 font-body">
+      <div className="h-full bg-vignette flex flex-col items-center p-3 sm:p-4 font-body">
         {/* ===== Main frame ===== */}
         <div className="relative w-full max-w-5xl h-full rounded-2xl sm:rounded-[28px] border border-white/45 bg-black/80 overflow-hidden flex flex-col">
           <CornerFlourish corner="tl" />
@@ -523,7 +551,7 @@ function App() {
                 {TABS.map((tabDef, i) => (
                   <button key={tabDef.key} onClick={() => setState((p) => ({ ...p, tab: tabDef.key }))} className="flex items-center gap-2 group">
                     {i === 0 && <ArrowMark direction="left" active={state.tab === tabDef.key} />}
-                    <span className={`font-display text-sm sm:text-lg tracking-[0.2em] sm:tracking-[0.25em] ${state.tab === tabDef.key ? 'text-white' : 'text-white/35 group-hover:text-white/70'}`}>
+                    <span className={`font-display text-sm sm:text-base tracking-[0.2em] sm:tracking-[0.25em] ${state.tab === tabDef.key ? 'text-white' : 'text-white/35 group-hover:text-white/70'}`}>
                       {tabDef.label}
                     </span>
                     {i === 0 && <ArrowMark direction="right" active={state.tab === tabDef.key} />}
@@ -539,155 +567,72 @@ function App() {
 
             {/* ----- QUESTS ----- */}
             {state.tab === 'quests' && (
-              <div className="h-full flex flex-col sm:flex-row">
-                {/* Left: quest list */}
-                <div className="flex-1 sm:flex-none sm:w-[36%] min-h-0 flex flex-col px-4 sm:px-8 py-3 sm:py-5 overflow-hidden">
-                  <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 pr-1">
-                    {mainQuests.length > 0 && (
-                      <>
-                        <p className="font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1">ОСНОВНЫЕ</p>
-                        {mainQuests.map((q) => <QuestListItem key={q.id} q={q} selected={selectedQuest?.id === q.id} onSelect={selectQuest} />)}
-                        <div className="h-2" />
-                      </>
-                    )}
-                    {miscQuests.length > 0 && (
-                      <>
-                        <p className="font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1">ДОПОЛНИТЕЛЬНЫЕ</p>
-                        {miscQuests.map((q) => <QuestListItem key={q.id} q={q} selected={selectedQuest?.id === q.id} onSelect={selectQuest} />)}
-                      </>
-                    )}
-                    {state.quests.length === 0 && <p className="text-base italic text-white/35 py-6 text-center">Список заданий пуст</p>}
+              <>
+                {/* Desktop / landscape: side-by-side, both panels visible */}
+                <div className="hidden sm:flex h-full">
+                  <div className="sm:w-[36%] shrink-0 h-full overflow-hidden">
+                    <QuestListPanel
+                      activeMain={activeMain} activeMisc={activeMisc} completed={completedQuests}
+                      selectedId={selectedQuest?.id} onSelect={selectQuest}
+                      onAddQuest={() => setAddQuestOpen(true)} isEmpty={state.quests.length === 0}
+                    />
                   </div>
-                  <button onClick={() => setAddQuestOpen(true)}
-                    className="shrink-0 mt-3 font-display text-xs sm:text-sm tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 py-2 transition-colors">
-                    + НОВОЕ ЗАДАНИЕ
-                  </button>
+                  <VerticalDoubleBar />
+                  <div key={selectedQuest?.id || 'none'} className="anim-panel flex-1 h-full overflow-hidden">
+                    <QuestDetailPanel
+                      quest={selectedQuest} questXp={questXp} questBonus={questBonus}
+                      titleEdit={titleEdit} noteEdit={noteEdit} objEdit={objEdit}
+                      onToggleObjective={toggleObjective} onDeleteObjective={deleteObjective}
+                      onAddObjective={() => setAddObjOpen(true)}
+                    />
+                  </div>
                 </div>
 
-                <MobileSectionDivider />
-                <VerticalDoubleBar />
-
-                {/* Right: quest detail (animated on quest switch) */}
-                <div key={selectedQuest?.id || 'none'} className="anim-panel flex-1 min-h-0 flex flex-col px-4 sm:px-8 py-3 sm:py-5 overflow-hidden">
-                  {selectedQuest ? (
-                    <>
-                      {/* Title */}
-                      <div className="shrink-0">
-                        {editingTitle ? (
-                          <div className="flex items-center justify-center gap-2 sm:gap-3 my-1">
-                            <FlankOrnament long />
-                            <input
-                              autoFocus value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
-                              onBlur={saveTitle}
-                              className="font-display tracking-[0.18em] text-white uppercase bg-transparent border-b border-white/40 text-center outline-none text-lg sm:text-2xl w-2/3 max-w-xs"
-                            />
-                            <FlankOrnament flip long />
-                          </div>
-                        ) : (
-                          <div onClick={() => { setTitleDraft(selectedQuest.title); setEditingTitle(true); }} className="cursor-text">
-                            <FlankedHeading size="large" long>{selectedQuest.title}</FlankedHeading>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Note */}
-                      <div className="shrink-0">
-                        {editingNote ? (
-                          <div className="mb-1 mt-2">
-                            <textarea
-                              autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} rows={3}
-                              className="w-full bg-transparent border border-white/25 focus:border-white/60 outline-none px-2 py-1.5 text-base sm:text-lg text-white resize-none leading-snug font-body"
-                            />
-                            <div className="flex justify-end gap-2 mt-1">
-                              <SkyrimButton onClick={() => setEditingNote(false)} variant="ghost">ОТМЕНА</SkyrimButton>
-                              <SkyrimButton onClick={saveNote}>СОХРАНИТЬ</SkyrimButton>
-                            </div>
-                          </div>
-                        ) : (
-                          <p
-                            onClick={() => { setNoteDraft(selectedQuest.note || ''); setEditingNote(true); }}
-                            className="text-base sm:text-lg leading-snug text-white/95 mb-1 mt-2 max-w-2xl cursor-text hover:text-white transition-colors font-body"
-                            title="Нажмите, чтобы редактировать заметку"
-                          >
-                            {selectedQuest.note || <span className="italic text-white/35">Нажмите, чтобы добавить заметку…</span>}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* XP info line */}
-                      {selectedQuest.objectives.length > 0 && (
-                        <p className="shrink-0 text-xs sm:text-sm text-white/35 font-display tracking-wider mb-1">
-                          +{questXp} XP за задачу · бонус за квест: +{questBonus} XP
-                        </p>
-                      )}
-
-                      <FlankedHeading>ЗАДАЧИ</FlankedHeading>
-
-                      {/* Objectives — scrollable */}
-                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 pr-1 mt-1">
-                        {selectedQuest.objectives.length === 0 && (
-                          <p className="text-base italic text-white/35 py-1 font-body">Пока нет задач — добавьте первую.</p>
-                        )}
-                        {selectedQuest.objectives.map((o) => (
-                          <div key={o.id} className="flex items-start gap-2 group">
-                            <button onClick={() => toggleObjective(selectedQuest.id, o.id)} className="shrink-0 mt-[1px]">
-                              <Diamond filled={o.done} optional={o.optional} />
-                            </button>
-                            {editingObjId === o.id ? (
-                              <input
-                                autoFocus value={objDraft} onChange={(e) => setObjDraft(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') saveObjective(o.id); if (e.key === 'Escape') setEditingObjId(null); }}
-                                onBlur={() => saveObjective(o.id)}
-                                className="flex-1 min-w-0 bg-transparent border-b border-white/40 outline-none text-base sm:text-lg text-white font-body"
-                              />
-                            ) : (
-                              <span
-                                onClick={() => { setObjDraft(o.text); setEditingObjId(o.id); }}
-                                className={`flex-1 min-w-0 cursor-text break-words text-base sm:text-lg leading-snug font-body ${o.done ? 'line-through text-white/30' : o.optional ? 'text-white/45 italic' : 'text-white/65'}`}
-                              >
-                                {o.text}
-                              </span>
-                            )}
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-xs sm:text-sm text-white/30 font-display">+{questXp}</span>
-                              <button onClick={() => deleteObjective(o.id)} className="opacity-0 group-hover:opacity-100 text-white/35 hover:text-red-300 text-xs transition-opacity">✕</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <button onClick={() => setAddObjOpen(true)}
-                        className="shrink-0 self-start mt-2 font-display text-xs sm:text-sm tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 px-4 py-1.5 transition-colors">
-                        + ЗАДАЧА
-                      </button>
-
-                      {selectedQuest.done && <p className="shrink-0 mt-2 font-display text-base tracking-[0.3em] text-white">ЗАДАНИЕ ВЫПОЛНЕНО</p>}
-                    </>
-                  ) : (
-                    <p className="text-center italic text-white/35 py-12 font-body">Выберите задание слева</p>
-                  )}
+                {/* Mobile / portrait: master list, detail slides in from the right */}
+                <div className="sm:hidden relative h-full overflow-hidden">
+                  <div
+                    className={`absolute inset-0 h-full transition-transform duration-300 ease-out will-change-transform ${mobileView === 'detail' ? '-translate-x-full' : 'translate-x-0'}`}
+                  >
+                    <QuestListPanel
+                      activeMain={activeMain} activeMisc={activeMisc} completed={completedQuests}
+                      selectedId={selectedQuest?.id} onSelect={selectQuestMobile}
+                      onAddQuest={() => setAddQuestOpen(true)} isEmpty={state.quests.length === 0}
+                    />
+                  </div>
+                  <div
+                    className={`absolute inset-0 h-full transition-transform duration-300 ease-out will-change-transform ${mobileView === 'detail' ? 'translate-x-0' : 'translate-x-full'}`}
+                  >
+                    <div key={selectedQuest?.id || 'none'} className="anim-panel h-full overflow-hidden">
+                      <QuestDetailPanel
+                        quest={selectedQuest} questXp={questXp} questBonus={questBonus}
+                        titleEdit={titleEdit} noteEdit={noteEdit} objEdit={objEdit}
+                        onToggleObjective={toggleObjective} onDeleteObjective={deleteObjective}
+                        onAddObjective={() => setAddObjOpen(true)}
+                        onBack={() => setMobileView('list')}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* ----- STATS ----- */}
             {state.tab === 'stats' && (
               <div className="h-full overflow-y-auto overscroll-contain px-4 sm:px-10 py-4 sm:py-6">
                 <FlankedHeading size="large" long>Сводка персонажа</FlankedHeading>
-                <p className="text-base sm:text-lg leading-snug text-white/95 mb-2 mt-2 max-w-2xl font-body">
+                <p className="text-base sm:text-base leading-snug text-white/95 mb-2 mt-2 max-w-2xl font-body">
                   Уровень растёт за счёт выполненных задач и заданий. Каждая задача даёт столько опыта, сколько указано для задания, а завершение всего задания приносит суммарный опыт всех его задач.
                 </p>
                 <FlankedHeading>ХАРАКТЕРИСТИКИ</FlankedHeading>
                 <div className="grid sm:grid-cols-2 gap-8 mt-3">
                   <div>
-                    <p className="font-display text-base tracking-[0.2em] text-white/70 mb-2">УРОВЕНЬ {state.level}</p>
+                    <p className="font-display text-base sm:text-sm tracking-[0.2em] text-white/70 mb-2">УРОВЕНЬ {state.level}</p>
                     <div className="h-2 w-full bg-black/40 border border-white/25 overflow-hidden">
                       <div className="h-full bg-white" style={{ width: `${Math.min(100, Math.round((state.xp / xpNeeded) * 100))}%` }} />
                     </div>
-                    <p className="text-base text-white/55 mt-1 font-body">{state.xp} / {xpNeeded} опыта</p>
+                    <p className="text-base sm:text-sm text-white/55 mt-1 font-body">{state.xp} / {xpNeeded} опыта</p>
                   </div>
-                  <div className="space-y-1.5 text-base sm:text-lg font-body">
+                  <div className="space-y-1.5 text-base sm:text-sm font-body">
                     <StatRow label="Всего заданий" value={totalQuests} />
                     <StatRow label="Выполнено заданий" value={doneQuestsCount} />
                     <StatRow label="Задачи выполнены" value={`${doneObjectives} / ${totalObjectives}`} />
@@ -706,7 +651,7 @@ function App() {
           <DoubleBar />
 
           {/* Bottom bar */}
-          <div className="shrink-0 px-4 sm:px-10 py-2 sm:py-2.5 flex items-center justify-between text-xs sm:text-sm font-display">
+          <div className="shrink-0 px-4 sm:px-10 py-2 sm:py-2.5 flex items-center justify-between text-xs sm:text-xs font-display">
             <div className="flex gap-4 sm:gap-6">
               {state.tab === 'quests' && selectedQuest && (
                 <button onClick={() => toggleActive(selectedQuest.id)} className="tracking-[0.15em] text-white/55 hover:text-white">
@@ -730,6 +675,148 @@ function App() {
   );
 }
 
+// ---------- Quest list panel (left column / mobile master view) ----------
+function QuestListPanel({ activeMain, activeMisc, completed, selectedId, onSelect, onAddQuest, isEmpty }) {
+  return (
+    <div className="h-full flex flex-col px-4 sm:px-8 py-3 sm:py-5 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 pr-1">
+        {activeMain.length > 0 && (
+          <>
+            <p className="font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1">ОСНОВНЫЕ</p>
+            {activeMain.map((q) => <QuestListItem key={q.id} q={q} selected={selectedId === q.id} onSelect={onSelect} />)}
+          </>
+        )}
+        {activeMisc.length > 0 && (
+          <>
+            <p className="font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1 mt-3">ДОПОЛНИТЕЛЬНЫЕ</p>
+            {activeMisc.map((q) => <QuestListItem key={q.id} q={q} selected={selectedId === q.id} onSelect={onSelect} />)}
+          </>
+        )}
+        {completed.length > 0 && (
+          <>
+            <p className="font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1 mt-3">ВЫПОЛНЕННЫЕ</p>
+            {completed.map((q) => <QuestListItem key={q.id} q={q} selected={selectedId === q.id} onSelect={onSelect} />)}
+          </>
+        )}
+        {isEmpty && <p className="text-base italic text-white/35 py-6 text-center">Список заданий пуст</p>}
+      </div>
+      <button onClick={onAddQuest}
+        className="shrink-0 mt-3 font-display text-xs sm:text-xs tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 py-2 transition-colors">
+        + НОВОЕ ЗАДАНИЕ
+      </button>
+    </div>
+  );
+}
+
+// ---------- Quest detail panel (right column / mobile detail view) ----------
+// Entire panel scrolls as one unit, so nothing gets clipped regardless of content length.
+function QuestDetailPanel({ quest, questXp, questBonus, titleEdit, noteEdit, objEdit, onToggleObjective, onDeleteObjective, onAddObjective, onBack }) {
+  return (
+    <div className="h-full overflow-y-auto overscroll-contain px-4 sm:px-8 py-3 sm:py-5">
+      {onBack && (
+        <button onClick={onBack} className="mb-2 flex items-center gap-2 font-display text-sm tracking-[0.2em] text-white/55 hover:text-white">
+          <ArrowMark direction="left" active /> ЗАДАНИЯ
+        </button>
+      )}
+
+      {quest ? (
+        <>
+          {/* Title */}
+          {titleEdit.editing ? (
+            <div className="flex items-center justify-center gap-2 sm:gap-3 my-1">
+              <FlankOrnament long />
+              <input
+                autoFocus value={titleEdit.draft} onChange={(e) => titleEdit.setDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') titleEdit.save(); if (e.key === 'Escape') titleEdit.cancel(); }}
+                onBlur={titleEdit.save}
+                className="font-display tracking-[0.18em] text-white uppercase bg-transparent border-b border-white/40 text-center outline-none text-lg sm:text-2xl w-2/3 max-w-xs"
+              />
+              <FlankOrnament flip long />
+            </div>
+          ) : (
+            <div onClick={titleEdit.start} className="cursor-text">
+              <FlankedHeading size="large" long>{quest.title}</FlankedHeading>
+            </div>
+          )}
+
+          {/* Note */}
+          {noteEdit.editing ? (
+            <div className="mb-1 mt-2">
+              <textarea
+                autoFocus value={noteEdit.draft} onChange={(e) => noteEdit.setDraft(e.target.value)} rows={3}
+                className="w-full bg-transparent border border-white/25 focus:border-white/60 outline-none px-2 py-1.5 text-base text-white resize-none leading-snug font-body"
+              />
+              <div className="flex justify-end gap-2 mt-1">
+                <SkyrimButton onClick={noteEdit.cancel} variant="ghost">ОТМЕНА</SkyrimButton>
+                <SkyrimButton onClick={noteEdit.save}>СОХРАНИТЬ</SkyrimButton>
+              </div>
+            </div>
+          ) : (
+            <p
+              onClick={noteEdit.start}
+              className="text-base leading-snug text-white/95 mb-1 mt-2 max-w-2xl cursor-text hover:text-white transition-colors font-body"
+              title="Нажмите, чтобы редактировать заметку"
+            >
+              {quest.note || <span className="italic text-white/35">Нажмите, чтобы добавить заметку…</span>}
+            </p>
+          )}
+
+          {/* XP info line */}
+          {quest.objectives.length > 0 && (
+            <p className="text-xs text-white/35 font-display tracking-wider mb-1">
+              +{questXp} XP за задачу · бонус за квест: +{questBonus} XP
+            </p>
+          )}
+
+          <FlankedHeading>ЗАДАЧИ</FlankedHeading>
+
+          {/* Objectives — normal flow, panel itself scrolls */}
+          <div className="space-y-2 mt-1">
+            {quest.objectives.length === 0 && (
+              <p className="text-base italic text-white/35 py-1 font-body">Пока нет задач — добавьте первую.</p>
+            )}
+            {quest.objectives.map((o) => (
+              <div key={o.id} className="flex items-start gap-2 group">
+                <button onClick={() => onToggleObjective(quest.id, o.id)} className="shrink-0 mt-[1px]">
+                  <Diamond filled={o.done} optional={o.optional} />
+                </button>
+                {objEdit.editingId === o.id ? (
+                  <input
+                    autoFocus value={objEdit.draft} onChange={(e) => objEdit.setDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') objEdit.save(o.id); if (e.key === 'Escape') objEdit.cancel(); }}
+                    onBlur={() => objEdit.save(o.id)}
+                    className="flex-1 min-w-0 bg-transparent border-b border-white/40 outline-none text-base text-white font-body"
+                  />
+                ) : (
+                  <span
+                    onClick={() => objEdit.start(o)}
+                    className={`flex-1 min-w-0 cursor-text break-words text-base leading-snug font-body ${o.done ? 'line-through text-white/30' : o.optional ? 'text-white/45 italic' : 'text-white/65'}`}
+                  >
+                    {o.text}
+                  </span>
+                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-white/30 font-display">+{questXp}</span>
+                  <button onClick={() => onDeleteObjective(o.id)} className="opacity-0 group-hover:opacity-100 text-white/35 hover:text-red-300 text-xs transition-opacity">✕</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={onAddObjective}
+            className="self-start mt-2 font-display text-xs tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 px-4 py-1.5 transition-colors">
+            + ЗАДАЧА
+          </button>
+
+          {quest.done && <p className="mt-2 font-display text-base tracking-[0.3em] text-white">ЗАДАНИЕ ВЫПОЛНЕНО</p>}
+        </>
+      ) : (
+        <p className="text-center italic text-white/35 py-12 font-body">Выберите задание слева</p>
+      )}
+    </div>
+  );
+}
+
 function SystemTab({ state, setState }) {
   const [newNote, setNewNote] = useState('');
   const addNote = () => {
@@ -740,24 +827,22 @@ function SystemTab({ state, setState }) {
   const deleteNote = (id) => setState((prev) => ({ ...prev, notes: prev.notes.filter((n) => n.id !== id) }));
 
   return (
-    <div className="h-full flex flex-col px-4 sm:px-10 py-3 sm:py-6">
-      <div className="shrink-0">
-        <FlankedHeading size="large" long>Дневник</FlankedHeading>
-        <FlankedHeading>НОВАЯ ЗАПИСЬ</FlankedHeading>
-        <div className="flex gap-2 mb-3 mt-3 max-w-2xl">
-          <textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Запишите мысль, идею или напоминание..." rows={2}
-            className="flex-1 bg-transparent border border-white/25 focus:border-white/60 outline-none px-3 py-2 text-base sm:text-lg text-white placeholder:text-white/35 resize-none font-body" />
-          <SkyrimButton onClick={addNote}>ЗАПИСАТЬ</SkyrimButton>
-        </div>
+    <div className="h-full overflow-y-auto overscroll-contain px-4 sm:px-10 py-3 sm:py-6">
+      <FlankedHeading size="large" long>Дневник</FlankedHeading>
+      <FlankedHeading>НОВАЯ ЗАПИСЬ</FlankedHeading>
+      <div className="flex gap-2 mb-3 mt-3 max-w-2xl">
+        <textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Запишите мысль, идею или напоминание..." rows={2}
+          className="flex-1 bg-transparent border border-white/25 focus:border-white/60 outline-none px-3 py-2 text-base text-white placeholder:text-white/35 resize-none font-body" />
+        <SkyrimButton onClick={addNote}>ЗАПИСАТЬ</SkyrimButton>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 max-w-2xl pr-1">
+      <div className="space-y-2 max-w-2xl">
         {state.notes.length === 0 ? (
           <p className="italic text-white/35 font-body">Страницы дневника пока пусты.</p>
         ) : (
           state.notes.map((n) => (
             <div key={n.id} className="border border-white/15 p-3 flex justify-between gap-3">
               <div>
-                <p className="text-base sm:text-lg whitespace-pre-wrap text-white/90 font-body">{n.text}</p>
+                <p className="text-base whitespace-pre-wrap text-white/90 font-body">{n.text}</p>
                 <p className="text-sm text-white/35 mt-1 font-body">{new Date(n.createdAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</p>
               </div>
               <button onClick={() => deleteNote(n.id)} className="text-white/35 hover:text-red-300 text-sm shrink-0">✕</button>
@@ -782,7 +867,7 @@ function QuestListItem({ q, selected, onSelect }) {
   return (
     <button onClick={() => onSelect(q.id)}
       className={`w-full text-left flex items-center justify-between gap-2 py-1 font-display tracking-[0.1em] transition-colors uppercase ${
-        selected ? 'text-white text-base sm:text-lg font-medium' : q.done ? 'text-white/30 line-through text-sm sm:text-base' : 'text-white/55 hover:text-white/85 text-sm sm:text-base'
+        selected ? 'text-white text-base sm:text-base font-medium' : q.done ? 'text-white/30 line-through text-sm sm:text-sm' : 'text-white/55 hover:text-white/85 text-sm sm:text-sm'
       }`}>
       <span className="truncate flex items-center gap-1.5">
         {q.active && <span className="w-1.5 h-1.5 rotate-45 bg-white shrink-0" />}
@@ -820,7 +905,7 @@ function SkyrimButton({ children, onClick, variant = 'primary' }) {
     danger: 'border-red-400/60 text-red-300 hover:bg-red-400/10',
   };
   return (
-    <button onClick={onClick} className={`font-display text-xs sm:text-sm tracking-[0.2em] border px-4 py-2 transition-colors ${styles[variant]}`}>
+    <button onClick={onClick} className={`font-display text-xs tracking-[0.2em] border px-4 py-2 transition-colors ${styles[variant]}`}>
       {children}
     </button>
   );
