@@ -15,10 +15,9 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#050607" />
 
-<!-- React + Babel (in-browser JSX) + Tailwind -->
+<!-- React + Tailwind -->
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
@@ -27,417 +26,424 @@
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">
+  <div id="app-loading" style="position:fixed;inset:0;background:#050607;color:#666;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-family:sans-serif;font-size:14px;letter-spacing:.15em;">
+    <div id="app-loading-text">ЗАГРУЗКА…</div>
+  </div>
+</div>
 
-<script type="text/babel" data-presets="react">
+<!-- CDN failure detector: if React doesn't mount in 8s, show error -->
+<script>
+  window.__appLoadTimer = setTimeout(function() {
+    var el = document.getElementById('app-loading-text');
+    if (el) {
+      el.innerHTML = '&#9888; Ошибка загрузки<br><span style="font-size:12px;color:#555;letter-spacing:.05em">Нет интернета или CDN недоступен.<br>Откройте консоль (F12) для диагностики.</span>';
+      el.style.color = '#e06b6b';
+      el.style.textAlign = 'center';
+      el.style.lineHeight = '1.8';
+    }
+  }, 8000);
+</script>
+
+<script type="text/javascript">
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 const { useState, useEffect, useMemo } = React;
-
 // localStorage-backed shim for the window.storage API
 if (!window.storage) {
-  window.storage = {
-    get: async (key) => {
-      try {
-        const v = localStorage.getItem(key);
-        return v === null ? null : { key, value: v, shared: false };
-      } catch (e) { return null; }
-    },
-    set: async (key, value) => {
-      try {
-        localStorage.setItem(key, value);
-        return { key, value, shared: false };
-      } catch (e) { return null; }
-    },
-    delete: async (key) => {
-      try { localStorage.removeItem(key); return { key, deleted: true, shared: false }; }
-      catch (e) { return null; }
-    },
-    list: async (prefix = '') => {
-      try {
-        const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
-        return { keys, prefix, shared: false };
-      } catch (e) { return null; }
-    },
-  };
+    window.storage = {
+        get: (key) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                const v = localStorage.getItem(key);
+                return v === null ? null : { key, value: v, shared: false };
+            }
+            catch (e) {
+                return null;
+            }
+        }),
+        set: (key, value) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                localStorage.setItem(key, value);
+                return { key, value, shared: false };
+            }
+            catch (e) {
+                return null;
+            }
+        }),
+        delete: (key) => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                localStorage.removeItem(key);
+                return { key, deleted: true, shared: false };
+            }
+            catch (e) {
+                return null;
+            }
+        }),
+        list: (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (prefix = '') {
+            try {
+                const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+                return { keys, prefix, shared: false };
+            }
+            catch (e) {
+                return null;
+            }
+        }),
+    };
 }
-
-
+// ---------- Error Boundary ----------
+class ErrorBoundary extends React.Component {
+    constructor(props) { super(props); this.state = { error: null }; }
+    static getDerivedStateFromError(e) { return { error: e }; }
+    render() {
+        if (this.state.error) {
+            return (React.createElement("div", { style: {
+                    position: 'fixed', inset: 0, background: '#050607', color: '#e06b6b',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    gap: 12, fontFamily: 'sans-serif', padding: 24, textAlign: 'center'
+                } },
+                React.createElement("div", { style: { fontSize: 16, letterSpacing: '.15em' } }, "\u26A0 \u041E\u0428\u0418\u0411\u041A\u0410 \u041F\u0420\u0418\u041B\u041E\u0416\u0415\u041D\u0418\u042F"),
+                React.createElement("div", { style: { fontSize: 13, color: '#888', maxWidth: 480, lineHeight: 1.6 } }, this.state.error.message),
+                React.createElement("div", { style: { fontSize: 12, color: '#555', marginTop: 8 } },
+                    "\u041E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 \u043A\u043E\u043D\u0441\u043E\u043B\u044C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0430 (F12) \u0434\u043B\u044F \u043F\u043E\u0434\u0440\u043E\u0431\u043D\u043E\u0441\u0442\u0435\u0439.",
+                    React.createElement("br", null),
+                    "\u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043E\u0447\u0438\u0441\u0442\u0438\u0442\u044C localStorage: ",
+                    React.createElement("code", { style: { color: '#aaa' } }, "localStorage.removeItem('skyrim-journal-ru-v4')"))));
+        }
+        return this.props.children;
+    }
+}
 // ---------- Helpers ----------
 const STORAGE_KEY = 'skyrim-journal-ru-v4'; // keep same key — preserves existing saved data
 const uid = () => Math.random().toString(36).slice(2, 10);
 const XP_VALUES = { minor: 10, side: 25, main: 50 };
 const XP_FOR_LEVEL = (lvl) => Math.floor(100 * Math.pow(lvl, 1.35));
-
 const DAYS_RU = ['Сандас', 'Морндас', 'Тирдас', 'Миддас', 'Турдас', 'Фредас', 'Лордас'];
 const MONTHS_RU = [
-  'Утренней Звезды', 'Дождевых Рук', 'Первого Цветка', 'Цветения Земли',
-  'Заоблачного Покрова', 'Высокого Лета', 'Сердца Лета', 'Последнего Зерна',
-  'Заката Солнца', 'Утренней Тени', 'Морозной Руки', 'Заклятия Колдуна',
+    'Утренней Звезды', 'Дождевых Рук', 'Первого Цветка', 'Цветения Земли',
+    'Заоблачного Покрова', 'Высокого Лета', 'Сердца Лета', 'Последнего Зерна',
+    'Заката Солнца', 'Утренней Тени', 'Морозной Руки', 'Заклятия Колдуна',
 ];
-
 const defaultState = {
-  tab: 'quests',
-  xp: 0,
-  level: 1,
-  selectedQuestId: 'init-1',
-  quests: [
-    {
-      id: 'init-1',
-      title: 'Возвращение к корням',
-      category: 'misc',
-      type: 'side',
-      active: true,
-      done: false,
-      note: 'Личные дела на сегодня. Отмечай задачи по мере выполнения, чтобы получить опыт.',
-      objectives: [
-        { id: uid(), text: 'Сделать зарядку утром', done: false, optional: false },
-        { id: uid(), text: 'Разобрать почту и сообщения', done: false, optional: false },
-        { id: uid(), text: 'Подготовить отчёт для встречи', done: false, optional: false },
-        { id: uid(), text: 'Позвонить родителям', done: false, optional: true },
-      ],
-    },
-    {
-      id: 'init-2',
-      title: 'Рассвет с пользой',
-      category: 'misc',
-      type: 'side',
-      active: false,
-      done: false,
-      note: 'Утренний ритуал для бодрого начала дня.',
-      objectives: [
-        { id: uid(), text: 'Проснуться до 7:00', done: false, optional: false },
-        { id: uid(), text: 'Медитация 10 минут', done: false, optional: false },
-      ],
-    },
-    {
-      id: 'init-3',
-      title: 'Драконорождённый',
-      category: 'main',
-      type: 'main',
-      active: false,
-      done: false,
-      note: 'Главное дело дня — то, без чего день не будет считаться удавшимся.',
-      objectives: [
-        { id: uid(), text: 'Завершить самую важную задачу дня', done: false, optional: false },
-      ],
-    },
-  ],
-  notes: [],
+    tab: 'quests',
+    xp: 0,
+    level: 1,
+    selectedQuestId: 'init-1',
+    quests: [
+        {
+            id: 'init-1',
+            title: 'Возвращение к корням',
+            category: 'misc',
+            type: 'side',
+            active: true,
+            done: false,
+            note: 'Личные дела на сегодня. Отмечай задачи по мере выполнения, чтобы получить опыт.',
+            objectives: [
+                { id: uid(), text: 'Сделать зарядку утром', done: false, optional: false },
+                { id: uid(), text: 'Разобрать почту и сообщения', done: false, optional: false },
+                { id: uid(), text: 'Подготовить отчёт для встречи', done: false, optional: false },
+                { id: uid(), text: 'Позвонить родителям', done: false, optional: true },
+            ],
+        },
+        {
+            id: 'init-2',
+            title: 'Рассвет с пользой',
+            category: 'misc',
+            type: 'side',
+            active: false,
+            done: false,
+            note: 'Утренний ритуал для бодрого начала дня.',
+            objectives: [
+                { id: uid(), text: 'Проснуться до 7:00', done: false, optional: false },
+                { id: uid(), text: 'Медитация 10 минут', done: false, optional: false },
+            ],
+        },
+        {
+            id: 'init-3',
+            title: 'Драконорождённый',
+            category: 'main',
+            type: 'main',
+            active: false,
+            done: false,
+            note: 'Главное дело дня — то, без чего день не будет считаться удавшимся.',
+            objectives: [
+                { id: uid(), text: 'Завершить самую важную задачу дня', done: false, optional: false },
+            ],
+        },
+    ],
+    notes: [],
 };
-
 // ---------- Decorative pieces ----------
-
 const CornerFlourish = ({ corner }) => {
-  const transforms = {
-    tl: '', tr: 'scale(-1,1) translate(-100,0)', bl: 'scale(1,-1) translate(0,-100)', br: 'scale(-1,-1) translate(-100,-100)',
-  };
-  const pos = { tl: 'top-0 left-0', tr: 'top-0 right-0', bl: 'bottom-0 left-0', br: 'bottom-0 right-0' };
-  return (
-    <svg className={`absolute ${pos[corner]} w-10 h-10 sm:w-14 sm:h-14 pointer-events-none z-10`} viewBox="0 0 100 100">
-      <g transform={transforms[corner]} stroke="#ffffff" strokeWidth="1" fill="none" opacity="0.8">
-        <path d="M14 2 Q 2 2 2 14" />
-        <path d="M2 22 Q 30 22 30 50" />
-        <path d="M22 2 Q 22 30 50 30" />
-        <path d="M2 14 L2 40" strokeWidth="0.7" opacity="0.5" />
-        <path d="M14 2 L40 2" strokeWidth="0.7" opacity="0.5" />
-        <circle cx="6" cy="6" r="1.4" fill="#ffffff" stroke="none" />
-      </g>
-    </svg>
-  );
+    const transforms = {
+        tl: '', tr: 'scale(-1,1) translate(-100,0)', bl: 'scale(1,-1) translate(0,-100)', br: 'scale(-1,-1) translate(-100,-100)',
+    };
+    const pos = { tl: 'top-0 left-0', tr: 'top-0 right-0', bl: 'bottom-0 left-0', br: 'bottom-0 right-0' };
+    return (React.createElement("svg", { className: `absolute ${pos[corner]} w-10 h-10 sm:w-14 sm:h-14 pointer-events-none z-10`, viewBox: "0 0 100 100" },
+        React.createElement("g", { transform: transforms[corner], stroke: "#ffffff", strokeWidth: "1", fill: "none", opacity: "0.8" },
+            React.createElement("path", { d: "M14 2 Q 2 2 2 14" }),
+            React.createElement("path", { d: "M2 22 Q 30 22 30 50" }),
+            React.createElement("path", { d: "M22 2 Q 22 30 50 30" }),
+            React.createElement("path", { d: "M2 14 L2 40", strokeWidth: "0.7", opacity: "0.5" }),
+            React.createElement("path", { d: "M14 2 L40 2", strokeWidth: "0.7", opacity: "0.5" }),
+            React.createElement("circle", { cx: "6", cy: "6", r: "1.4", fill: "#ffffff", stroke: "none" }))));
 };
-
-const DoubleBar = () => (
-  <div className="relative h-[6px] mx-4 sm:mx-6 shrink-0">
-    <div className="absolute top-0 left-0 right-0 h-[1px] bg-white/65" />
-    <div className="absolute bottom-[1px] left-0 right-0 h-[1px] bg-white/30" />
-  </div>
-);
-
+const DoubleBar = () => (React.createElement("div", { className: "relative h-[6px] mx-4 sm:mx-6 shrink-0" },
+    React.createElement("div", { className: "absolute top-0 left-0 right-0 h-[1px] bg-white/65" }),
+    React.createElement("div", { className: "absolute bottom-[1px] left-0 right-0 h-[1px] bg-white/30" })));
 // Vertical double-line divider between columns on desktop/landscape, with diamond marker at top
-const VerticalDoubleBar = () => (
-  <div className="hidden sm:flex relative px-[5px] my-5 shrink-0">
-    <svg className="absolute -top-[7px] left-1/2 -translate-x-1/2 z-10" width="14" height="14" viewBox="0 0 14 14">
-      <rect x="2" y="2" width="10" height="10" transform="rotate(45 7 7)" fill="#070809" stroke="#ffffff" strokeWidth="1.2" />
-    </svg>
-    <div className="flex gap-[3px] h-full">
-      <div className="w-[1px] h-full bg-white/55" />
-      <div className="w-[1px] h-full bg-white/25" />
-    </div>
-  </div>
-);
-
-const ArrowMark = ({ direction = 'left', active }) => (
-  <svg width="15" height="15" viewBox="0 0 14 14" className={direction === 'right' ? 'rotate-180' : ''}>
-    <path d="M9 1 L3 7 L9 13" fill="none" stroke={active ? '#ffffff' : '#7d8896'} strokeWidth="1.3" />
-  </svg>
-);
-
-const Diamond = ({ filled, optional }) => (
-  <svg width="16" height="16" viewBox="0 0 14 14" className="shrink-0 mt-[2px]">
-    <rect x="2" y="2" width="10" height="10" transform="rotate(45 7 7)"
-      fill={filled ? '#ffffff' : 'transparent'}
-      stroke={optional ? '#6e7986' : '#ffffff'} strokeWidth="1.1" />
-  </svg>
-);
-
+const VerticalDoubleBar = () => (React.createElement("div", { className: "hidden sm:flex relative px-[5px] my-5 shrink-0" },
+    React.createElement("svg", { className: "absolute -top-[7px] left-1/2 -translate-x-1/2 z-10", width: "14", height: "14", viewBox: "0 0 14 14" },
+        React.createElement("rect", { x: "2", y: "2", width: "10", height: "10", transform: "rotate(45 7 7)", fill: "#070809", stroke: "#ffffff", strokeWidth: "1.2" })),
+    React.createElement("div", { className: "flex gap-[3px] h-full" },
+        React.createElement("div", { className: "w-[1px] h-full bg-white/55" }),
+        React.createElement("div", { className: "w-[1px] h-full bg-white/25" }))));
+const ArrowMark = ({ direction = 'left', active }) => (React.createElement("svg", { width: "15", height: "15", viewBox: "0 0 14 14", className: direction === 'right' ? 'rotate-180' : '' },
+    React.createElement("path", { d: "M9 1 L3 7 L9 13", fill: "none", stroke: active ? '#ffffff' : '#7d8896', strokeWidth: "1.3" })));
+const Diamond = ({ filled, optional }) => (React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 14 14", className: "shrink-0 mt-[2px]" },
+    React.createElement("rect", { x: "2", y: "2", width: "10", height: "10", transform: "rotate(45 7 7)", fill: filled ? '#ffffff' : 'transparent', stroke: optional ? '#6e7986' : '#ffffff', strokeWidth: "1.1" })));
 // Ornamental flanking piece: line — diamond(s) — arrow tip — short line.
-const FlankOrnament = ({ flip, long }) => (
-  <svg width={long ? 90 : 60} height="14" viewBox={`0 0 ${long ? 90 : 60} 14`} className={flip ? 'scale-x-[-1]' : ''} preserveAspectRatio="none">
-    <g stroke="#ffffff" strokeWidth="1" fill="none" opacity="0.75">
-      <line x1="0" y1="7" x2={long ? 64 : 40} y2="7" />
-      <rect x={(long ? 64 : 40) - 26} y="4" width="6" height="6" transform={`rotate(45 ${(long ? 64 : 40) - 23} 7)`} />
-      {long && <rect x={(long ? 64 : 40) - 44} y="4" width="6" height="6" transform={`rotate(45 ${(long ? 64 : 40) - 41} 7)`} />}
-      <path d={`M${long ? 64 : 40} 1 L${(long ? 64 : 40) + 14} 7 L${long ? 64 : 40} 13 Z`} />
-      <line x1={(long ? 64 : 40) + 14} y1="7" x2={long ? 90 : 60} y2="7" />
-    </g>
-  </svg>
-);
-
+const FlankOrnament = ({ flip, long }) => (React.createElement("svg", { width: long ? 90 : 60, height: "14", viewBox: `0 0 ${long ? 90 : 60} 14`, className: flip ? 'scale-x-[-1]' : '', preserveAspectRatio: "none" },
+    React.createElement("g", { stroke: "#ffffff", strokeWidth: "1", fill: "none", opacity: "0.75" },
+        React.createElement("line", { x1: "0", y1: "7", x2: long ? 64 : 40, y2: "7" }),
+        React.createElement("rect", { x: (long ? 64 : 40) - 26, y: "4", width: "6", height: "6", transform: `rotate(45 ${(long ? 64 : 40) - 23} 7)` }),
+        long && React.createElement("rect", { x: (long ? 64 : 40) - 44, y: "4", width: "6", height: "6", transform: `rotate(45 ${(long ? 64 : 40) - 41} 7)` }),
+        React.createElement("path", { d: `M${long ? 64 : 40} 1 L${(long ? 64 : 40) + 14} 7 L${long ? 64 : 40} 13 Z` }),
+        React.createElement("line", { x1: (long ? 64 : 40) + 14, y1: "7", x2: long ? 90 : 60, y2: "7" }))));
 // Centered heading flanked symmetrically by ornaments.
 // Sizes: mobile gets a bump (per request), desktop/landscape kept at original V4 sizes.
-const FlankedHeading = ({ children, size = 'normal', long = false }) => (
-  <div className="flex items-center justify-center gap-2 sm:gap-3 my-1 shrink-0">
-    <FlankOrnament long={long} />
-    <h2 className={`font-display tracking-[0.18em] text-white uppercase whitespace-nowrap ${size === 'large' ? 'text-lg sm:text-2xl' : 'text-sm sm:text-base'}`}>
-      {children}
-    </h2>
-    <FlankOrnament flip long={long} />
-  </div>
-);
-
+const FlankedHeading = ({ children, size = 'normal', long = false }) => (React.createElement("div", { className: "flex items-center justify-center gap-2 sm:gap-3 my-1 shrink-0" },
+    React.createElement(FlankOrnament, { long: long }),
+    React.createElement("h2", { className: `font-display tracking-[0.18em] text-white uppercase whitespace-nowrap ${size === 'large' ? 'text-lg sm:text-2xl' : 'text-sm sm:text-base'}` }, children),
+    React.createElement(FlankOrnament, { flip: true, long: long })));
 // ---------- Main component ----------
 function App() {
-  const [state, setState] = useState(defaultState);
-  const [loaded, setLoaded] = useState(false);
-  const [now, setNow] = useState(new Date());
-  const [levelUp, setLevelUp] = useState(false);
-  const [addQuestOpen, setAddQuestOpen] = useState(false);
-  const [addObjOpen, setAddObjOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null);
-  const [editingNote, setEditingNote] = useState(false);
-  const [noteDraft, setNoteDraft] = useState('');
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState('');
-  const [editingObjId, setEditingObjId] = useState(null);
-  const [objDraft, setObjDraft] = useState('');
-  const [mobileView, setMobileView] = useState('list'); // 'list' | 'detail' — mobile master/detail nav
-
-  const [newQuestTitle, setNewQuestTitle] = useState('');
-  const [newQuestNote, setNewQuestNote] = useState('');
-  const [newQuestType, setNewQuestType] = useState('side');
-  const [newQuestCategory, setNewQuestCategory] = useState('misc');
-  const [newObjectiveText, setNewObjectiveText] = useState('');
-  const [newObjectiveOptional, setNewObjectiveOptional] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await window.storage.get(STORAGE_KEY);
-        if (res && res.value) setState({ ...defaultState, ...JSON.parse(res.value) });
-      } catch (e) {}
-      finally { setLoaded(true); }
-    })();
-    const interval = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
-    window.storage.set(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
-  }, [state, loaded]);
-
-  // Reset inline-edit state whenever the selected quest changes
-  useEffect(() => {
-    setEditingTitle(false);
-    setEditingObjId(null);
-  }, [state.selectedQuestId]);
-
-  // Reset mobile master/detail view when switching top-level tabs
-  useEffect(() => {
-    setMobileView('list');
-  }, [state.tab]);
-
-  const xpNeeded = useMemo(() => XP_FOR_LEVEL(state.level), [state.level]);
-
-  const addXp = (amount) => {
-    setState((prev) => {
-      let xp = prev.xp + amount;
-      let level = prev.level;
-      let leveled = false;
-      while (xp >= XP_FOR_LEVEL(level)) {
-        xp -= XP_FOR_LEVEL(level);
-        level += 1;
-        leveled = true;
-      }
-      if (xp < 0) {
-        while (xp < 0 && level > 1) {
-          level -= 1;
-          xp += XP_FOR_LEVEL(level);
-        }
-        if (xp < 0) xp = 0;
-      }
-      if (leveled) {
-        setLevelUp(true);
-        setTimeout(() => setLevelUp(false), 2000);
-      }
-      return { ...prev, xp, level };
-    });
-  };
-
-  const selectedQuest = state.quests.find((q) => q.id === state.selectedQuestId) || state.quests[0];
-
-  // Each objective grants the quest's own XP value (minor/side/main).
-  // Completing the quest grants the SUM of all objectives' XP (objectives.length * questXp).
-  const toggleObjective = (questId, objId) => {
-    setState((prev) => {
-      const quests = prev.quests.map((q) => {
-        if (q.id !== questId) return q;
-        const qXp = XP_VALUES[q.type] || 25;
-        const objectives = q.objectives.map((o) => {
-          if (o.id !== objId) return o;
-          const done = !o.done;
-          addXp(done ? qXp : -qXp);
-          return { ...o, done };
+    const [state, setState] = useState(defaultState);
+    const [loaded, setLoaded] = useState(false);
+    const [now, setNow] = useState(new Date());
+    const [levelUp, setLevelUp] = useState(false);
+    const [addQuestOpen, setAddQuestOpen] = useState(false);
+    const [addObjOpen, setAddObjOpen] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(null);
+    const [editingNote, setEditingNote] = useState(false);
+    const [noteDraft, setNoteDraft] = useState('');
+    const [editingTitle, setEditingTitle] = useState(false);
+    const [titleDraft, setTitleDraft] = useState('');
+    const [editingObjId, setEditingObjId] = useState(null);
+    const [objDraft, setObjDraft] = useState('');
+    const [mobileView, setMobileView] = useState('list'); // 'list' | 'detail' — mobile master/detail nav
+    const [newQuestTitle, setNewQuestTitle] = useState('');
+    const [newQuestNote, setNewQuestNote] = useState('');
+    const [newQuestType, setNewQuestType] = useState('side');
+    const [newQuestCategory, setNewQuestCategory] = useState('misc');
+    const [newObjectiveText, setNewObjectiveText] = useState('');
+    const [newObjectiveOptional, setNewObjectiveOptional] = useState(false);
+    useEffect(() => {
+        (() => __awaiter(this, void 0, void 0, function* () {
+            try {
+                const res = yield window.storage.get(STORAGE_KEY);
+                if (res && res.value)
+                    setState(Object.assign(Object.assign({}, defaultState), JSON.parse(res.value)));
+            }
+            catch (e) { }
+            finally {
+                setLoaded(true);
+            }
+        }))();
+        const interval = setInterval(() => setNow(new Date()), 60000);
+        return () => clearInterval(interval);
+    }, []);
+    useEffect(() => {
+        if (!loaded)
+            return;
+        window.storage.set(STORAGE_KEY, JSON.stringify(state)).catch(() => { });
+    }, [state, loaded]);
+    // Reset inline-edit state whenever the selected quest changes
+    useEffect(() => {
+        setEditingTitle(false);
+        setEditingObjId(null);
+    }, [state.selectedQuestId]);
+    // Reset mobile master/detail view when switching top-level tabs
+    useEffect(() => {
+        setMobileView('list');
+    }, [state.tab]);
+    // Clear loading overlay when app successfully mounts
+    useEffect(() => {
+        const el = document.getElementById('app-loading');
+        if (el)
+            el.remove();
+        clearTimeout(window.__appLoadTimer);
+    }, []);
+    const xpNeeded = useMemo(() => XP_FOR_LEVEL(state.level), [state.level]);
+    const addXp = (amount) => {
+        setState((prev) => {
+            let xp = prev.xp + amount;
+            let level = prev.level;
+            let leveled = false;
+            while (xp >= XP_FOR_LEVEL(level)) {
+                xp -= XP_FOR_LEVEL(level);
+                level += 1;
+                leveled = true;
+            }
+            if (xp < 0) {
+                while (xp < 0 && level > 1) {
+                    level -= 1;
+                    xp += XP_FOR_LEVEL(level);
+                }
+                if (xp < 0)
+                    xp = 0;
+            }
+            if (leveled) {
+                setLevelUp(true);
+                setTimeout(() => setLevelUp(false), 2000);
+            }
+            return Object.assign(Object.assign({}, prev), { xp, level });
         });
-        const allDone = objectives.length > 0 && objectives.filter((o) => !o.optional).every((o) => o.done);
-        const bonus = objectives.length * qXp;
-        if (allDone && !q.done) addXp(bonus);
-        else if (!allDone && q.done) addXp(-bonus);
-        return { ...q, objectives, done: allDone };
-      });
-      return { ...prev, quests };
-    });
-  };
-
-  const toggleActive = (questId) => {
-    setState((prev) => ({ ...prev, quests: prev.quests.map((q) => (q.id === questId ? { ...q, active: !q.active } : q)) }));
-  };
-
-  const selectQuest = (id) => setState((prev) => ({ ...prev, selectedQuestId: id }));
-  const selectQuestMobile = (id) => {
-    selectQuest(id);
-    setMobileView('detail');
-  };
-
-  const addQuest = () => {
-    if (!newQuestTitle.trim()) return;
-    const id = uid();
-    setState((prev) => ({
-      ...prev,
-      quests: [...prev.quests, { id, title: newQuestTitle.trim(), category: newQuestCategory, type: newQuestType, active: false, done: false, note: newQuestNote.trim(), objectives: [] }],
-      selectedQuestId: id,
-    }));
-    setNewQuestTitle(''); setNewQuestNote(''); setAddQuestOpen(false);
-  };
-
-  const deleteQuest = (id) => {
-    setState((prev) => {
-      const quests = prev.quests.filter((q) => q.id !== id);
-      return { ...prev, quests, selectedQuestId: prev.selectedQuestId === id ? (quests[0]?.id ?? null) : prev.selectedQuestId };
-    });
-    setConfirmDelete(null);
-    setMobileView('list');
-  };
-
-  const addObjective = () => {
-    if (!newObjectiveText.trim() || !selectedQuest) return;
-    setState((prev) => ({
-      ...prev,
-      quests: prev.quests.map((q) => q.id === selectedQuest.id
-        ? { ...q, objectives: [...q.objectives, { id: uid(), text: newObjectiveText.trim(), done: false, optional: newObjectiveOptional }], done: false }
-        : q),
-    }));
-    setNewObjectiveText(''); setNewObjectiveOptional(false); setAddObjOpen(false);
-  };
-
-  const deleteObjective = (objId) => {
-    if (!selectedQuest) return;
-    setState((prev) => ({
-      ...prev,
-      quests: prev.quests.map((q) => q.id === selectedQuest.id ? { ...q, objectives: q.objectives.filter((o) => o.id !== objId) } : q),
-    }));
-  };
-
-  const saveNote = () => {
-    if (!selectedQuest) return;
-    setState((prev) => ({ ...prev, quests: prev.quests.map((q) => q.id === selectedQuest.id ? { ...q, note: noteDraft } : q) }));
-    setEditingNote(false);
-  };
-
-  const saveTitle = () => {
-    if (!selectedQuest) return;
-    const text = titleDraft.trim();
-    if (text) {
-      setState((prev) => ({ ...prev, quests: prev.quests.map((q) => q.id === selectedQuest.id ? { ...q, title: text } : q) }));
-    }
-    setEditingTitle(false);
-  };
-
-  const saveObjective = (objId) => {
-    if (!selectedQuest) return;
-    const text = objDraft.trim();
-    if (text) {
-      setState((prev) => ({
-        ...prev,
-        quests: prev.quests.map((q) => q.id === selectedQuest.id
-          ? { ...q, objectives: q.objectives.map((o) => o.id === objId ? { ...o, text } : o) }
-          : q),
-      }));
-    }
-    setEditingObjId(null);
-  };
-
-  // Group quests: active by category, plus a combined "completed" section
-  const activeMain = state.quests.filter((q) => q.category === 'main' && !q.done);
-  const activeMisc = state.quests.filter((q) => q.category === 'misc' && !q.done);
-  const completedQuests = state.quests.filter((q) => q.done);
-
-  const dayName = DAYS_RU[now.getDay()];
-  const monthName = MONTHS_RU[now.getMonth()];
-  const timeStr = now.toLocaleTimeString('ru-RU', { hour: 'numeric', minute: '2-digit' });
-
-  const totalObjectives = state.quests.reduce((acc, q) => acc + q.objectives.length, 0);
-  const doneObjectives = state.quests.reduce((acc, q) => acc + q.objectives.filter((o) => o.done).length, 0);
-  const doneQuestsCount = completedQuests.length;
-  const totalQuests = state.quests.length;
-  const percent = totalQuests > 0 ? Math.round((doneQuestsCount / totalQuests) * 100) : 0;
-
-  const questXp = selectedQuest ? (XP_VALUES[selectedQuest.type] || 25) : 0;
-  const questBonus = selectedQuest ? selectedQuest.objectives.length * questXp : 0;
-
-  const TABS = [
-    { key: 'quests', label: 'ЗАДАНИЯ' },
-    { key: 'stats', label: 'СТАТИСТИКА' },
-    { key: 'system', label: 'СИСТЕМА' },
-  ];
-
-  const titleEdit = {
-    editing: editingTitle,
-    draft: titleDraft,
-    setDraft: setTitleDraft,
-    start: () => { setTitleDraft(selectedQuest.title); setEditingTitle(true); },
-    save: saveTitle,
-    cancel: () => setEditingTitle(false),
-  };
-  const noteEdit = {
-    editing: editingNote,
-    draft: noteDraft,
-    setDraft: setNoteDraft,
-    start: () => { setNoteDraft(selectedQuest.note || ''); setEditingNote(true); },
-    save: saveNote,
-    cancel: () => setEditingNote(false),
-  };
-  const objEdit = {
-    editingId: editingObjId,
-    draft: objDraft,
-    setDraft: setObjDraft,
-    start: (o) => { setObjDraft(o.text); setEditingObjId(o.id); },
-    save: saveObjective,
-    cancel: () => setEditingObjId(null),
-  };
-
-  return (
-    <div className="h-full w-full text-white relative bg-[#050607] overflow-hidden">
-      <style>{`
+    };
+    const selectedQuest = state.quests.find((q) => q.id === state.selectedQuestId) || state.quests[0];
+    // Each objective grants the quest's own XP value (minor/side/main).
+    // Completing the quest grants the SUM of all objectives' XP (objectives.length * questXp).
+    const toggleObjective = (questId, objId) => {
+        setState((prev) => {
+            const quests = prev.quests.map((q) => {
+                if (q.id !== questId)
+                    return q;
+                const qXp = XP_VALUES[q.type] || 25;
+                const objectives = q.objectives.map((o) => {
+                    if (o.id !== objId)
+                        return o;
+                    const done = !o.done;
+                    addXp(done ? qXp : -qXp);
+                    return Object.assign(Object.assign({}, o), { done });
+                });
+                const allDone = objectives.length > 0 && objectives.filter((o) => !o.optional).every((o) => o.done);
+                const bonus = objectives.length * qXp;
+                if (allDone && !q.done)
+                    addXp(bonus);
+                else if (!allDone && q.done)
+                    addXp(-bonus);
+                return Object.assign(Object.assign({}, q), { objectives, done: allDone });
+            });
+            return Object.assign(Object.assign({}, prev), { quests });
+        });
+    };
+    const toggleActive = (questId) => {
+        setState((prev) => (Object.assign(Object.assign({}, prev), { quests: prev.quests.map((q) => (q.id === questId ? Object.assign(Object.assign({}, q), { active: !q.active }) : q)) })));
+    };
+    const selectQuest = (id) => setState((prev) => (Object.assign(Object.assign({}, prev), { selectedQuestId: id })));
+    const selectQuestMobile = (id) => {
+        selectQuest(id);
+        setMobileView('detail');
+    };
+    const addQuest = () => {
+        if (!newQuestTitle.trim())
+            return;
+        const id = uid();
+        setState((prev) => (Object.assign(Object.assign({}, prev), { quests: [...prev.quests, { id, title: newQuestTitle.trim(), category: newQuestCategory, type: newQuestType, active: false, done: false, note: newQuestNote.trim(), objectives: [] }], selectedQuestId: id })));
+        setNewQuestTitle('');
+        setNewQuestNote('');
+        setAddQuestOpen(false);
+    };
+    const deleteQuest = (id) => {
+        setState((prev) => {
+            var _a, _b;
+            const quests = prev.quests.filter((q) => q.id !== id);
+            return Object.assign(Object.assign({}, prev), { quests, selectedQuestId: prev.selectedQuestId === id ? ((_b = (_a = quests[0]) === null || _a === void 0 ? void 0 : _a.id) !== null && _b !== void 0 ? _b : null) : prev.selectedQuestId });
+        });
+        setConfirmDelete(null);
+        setMobileView('list');
+    };
+    const addObjective = () => {
+        if (!newObjectiveText.trim() || !selectedQuest)
+            return;
+        setState((prev) => (Object.assign(Object.assign({}, prev), { quests: prev.quests.map((q) => q.id === selectedQuest.id
+                ? Object.assign(Object.assign({}, q), { objectives: [...q.objectives, { id: uid(), text: newObjectiveText.trim(), done: false, optional: newObjectiveOptional }], done: false }) : q) })));
+        setNewObjectiveText('');
+        setNewObjectiveOptional(false);
+        setAddObjOpen(false);
+    };
+    const deleteObjective = (objId) => {
+        if (!selectedQuest)
+            return;
+        setState((prev) => (Object.assign(Object.assign({}, prev), { quests: prev.quests.map((q) => q.id === selectedQuest.id ? Object.assign(Object.assign({}, q), { objectives: q.objectives.filter((o) => o.id !== objId) }) : q) })));
+    };
+    const saveNote = () => {
+        if (!selectedQuest)
+            return;
+        setState((prev) => (Object.assign(Object.assign({}, prev), { quests: prev.quests.map((q) => q.id === selectedQuest.id ? Object.assign(Object.assign({}, q), { note: noteDraft }) : q) })));
+        setEditingNote(false);
+    };
+    const saveTitle = () => {
+        if (!selectedQuest)
+            return;
+        const text = titleDraft.trim();
+        if (text) {
+            setState((prev) => (Object.assign(Object.assign({}, prev), { quests: prev.quests.map((q) => q.id === selectedQuest.id ? Object.assign(Object.assign({}, q), { title: text }) : q) })));
+        }
+        setEditingTitle(false);
+    };
+    const saveObjective = (objId) => {
+        if (!selectedQuest)
+            return;
+        const text = objDraft.trim();
+        if (text) {
+            setState((prev) => (Object.assign(Object.assign({}, prev), { quests: prev.quests.map((q) => q.id === selectedQuest.id
+                    ? Object.assign(Object.assign({}, q), { objectives: q.objectives.map((o) => o.id === objId ? Object.assign(Object.assign({}, o), { text }) : o) }) : q) })));
+        }
+        setEditingObjId(null);
+    };
+    // Group quests: active by category, plus a combined "completed" section
+    const activeMain = state.quests.filter((q) => q.category === 'main' && !q.done);
+    const activeMisc = state.quests.filter((q) => q.category === 'misc' && !q.done);
+    const completedQuests = state.quests.filter((q) => q.done);
+    const dayName = DAYS_RU[now.getDay()];
+    const monthName = MONTHS_RU[now.getMonth()];
+    const timeStr = now.toLocaleTimeString('ru-RU', { hour: 'numeric', minute: '2-digit' });
+    const totalObjectives = state.quests.reduce((acc, q) => acc + q.objectives.length, 0);
+    const doneObjectives = state.quests.reduce((acc, q) => acc + q.objectives.filter((o) => o.done).length, 0);
+    const doneQuestsCount = completedQuests.length;
+    const totalQuests = state.quests.length;
+    const percent = totalQuests > 0 ? Math.round((doneQuestsCount / totalQuests) * 100) : 0;
+    const questXp = selectedQuest ? (XP_VALUES[selectedQuest.type] || 25) : 0;
+    const questBonus = selectedQuest ? selectedQuest.objectives.length * questXp : 0;
+    const TABS = [
+        { key: 'quests', label: 'ЗАДАНИЯ' },
+        { key: 'stats', label: 'СТАТИСТИКА' },
+        { key: 'system', label: 'СИСТЕМА' },
+    ];
+    const titleEdit = {
+        editing: editingTitle,
+        draft: titleDraft,
+        setDraft: setTitleDraft,
+        start: () => { setTitleDraft(selectedQuest.title); setEditingTitle(true); },
+        save: saveTitle,
+        cancel: () => setEditingTitle(false),
+    };
+    const noteEdit = {
+        editing: editingNote,
+        draft: noteDraft,
+        setDraft: setNoteDraft,
+        start: () => { setNoteDraft(selectedQuest.note || ''); setEditingNote(true); },
+        save: saveNote,
+        cancel: () => setEditingNote(false),
+    };
+    const objEdit = {
+        editingId: editingObjId,
+        draft: objDraft,
+        setDraft: setObjDraft,
+        start: (o) => { setObjDraft(o.text); setEditingObjId(o.id); },
+        save: saveObjective,
+        cancel: () => setEditingObjId(null),
+    };
+    return (React.createElement("div", { className: "h-full w-full text-white relative bg-[#050607] overflow-hidden" },
+        React.createElement("style", null, `
         @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap');
         html, body { height: 100%; margin: 0; padding: 0; background: #050607; overflow: hidden; }
         body {
@@ -460,460 +466,238 @@ function App() {
         }
         .anim-panel { animation: fadeSlide 0.25s ease-out; }
         * { -webkit-overflow-scrolling: touch; }
-      `}</style>
-
-      {levelUp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-          <div className="px-10 py-6 border-y border-white bg-black/90 anim-panel">
-            <p className="font-display text-3xl text-center text-white tracking-[0.3em]">УРОВЕНЬ ПОВЫШЕН</p>
-            <p className="font-display text-lg text-center mt-1 text-white/60 tracking-[0.3em]">УРОВЕНЬ {state.level}</p>
-          </div>
-        </div>
-      )}
-
-      {addQuestOpen && (
-        <Modal onClose={() => setAddQuestOpen(false)} title="НОВОЕ ЗАДАНИЕ">
-          <div className="space-y-3">
-            <Field label="Название">
-              <input autoFocus value={newQuestTitle} onChange={(e) => setNewQuestTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addQuest()}
-                className="w-full bg-transparent border-b border-white/30 focus:border-white outline-none py-1.5 text-lg text-white font-body" />
-            </Field>
-            <Field label="Описание (необязательно)">
-              <textarea value={newQuestNote} onChange={(e) => setNewQuestNote(e.target.value)} rows={2}
-                className="w-full bg-transparent border-b border-white/30 focus:border-white outline-none py-1.5 text-base text-white/80 resize-none font-body" />
-            </Field>
-            <div className="flex gap-4">
-              <Field label="Раздел">
-                <select value={newQuestCategory} onChange={(e) => setNewQuestCategory(e.target.value)}
-                  className="w-full bg-black border border-white/25 outline-none py-1.5 px-2 text-base text-white font-body">
-                  <option value="misc">Дополнительное</option>
-                  <option value="main">Основное</option>
-                </select>
-              </Field>
-              <Field label="Сложность">
-                <select value={newQuestType} onChange={(e) => setNewQuestType(e.target.value)}
-                  className="w-full bg-black border border-white/25 outline-none py-1.5 px-2 text-base text-white font-body">
-                  <option value="minor">Малое ({XP_VALUES.minor} XP/задача)</option>
-                  <option value="side">Побочное ({XP_VALUES.side} XP/задача)</option>
-                  <option value="main">Основное ({XP_VALUES.main} XP/задача)</option>
-                </select>
-              </Field>
-            </div>
-            <div className="flex justify-end gap-3 pt-2">
-              <SkyrimButton onClick={() => setAddQuestOpen(false)} variant="ghost">ОТМЕНА</SkyrimButton>
-              <SkyrimButton onClick={addQuest}>СОЗДАТЬ</SkyrimButton>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {addObjOpen && (
-        <Modal onClose={() => setAddObjOpen(false)} title="НОВАЯ ЗАДАЧА">
-          <div className="space-y-3">
-            <Field label="Текст задачи">
-              <input autoFocus value={newObjectiveText} onChange={(e) => setNewObjectiveText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addObjective()}
-                className="w-full bg-transparent border-b border-white/30 focus:border-white outline-none py-1.5 text-lg text-white font-body" />
-            </Field>
-            <label className="flex items-center gap-2 text-base text-white/60 cursor-pointer font-body">
-              <input type="checkbox" checked={newObjectiveOptional} onChange={(e) => setNewObjectiveOptional(e.target.checked)} />
-              Необязательная задача
-            </label>
-            <div className="flex justify-end gap-3 pt-2">
-              <SkyrimButton onClick={() => setAddObjOpen(false)} variant="ghost">ОТМЕНА</SkyrimButton>
-              <SkyrimButton onClick={addObjective}>ДОБАВИТЬ</SkyrimButton>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {confirmDelete && (
-        <Modal onClose={() => setConfirmDelete(null)} title="УДАЛИТЬ ЗАДАНИЕ?">
-          <p className="text-base text-white/80 mb-4 font-body">«{confirmDelete.title}» будет удалено без возможности восстановления.</p>
-          <div className="flex justify-end gap-3">
-            <SkyrimButton onClick={() => setConfirmDelete(null)} variant="ghost">ОТМЕНА</SkyrimButton>
-            <SkyrimButton onClick={() => deleteQuest(confirmDelete.id)} variant="danger">УДАЛИТЬ</SkyrimButton>
-          </div>
-        </Modal>
-      )}
-
-      <div className="h-full bg-vignette flex flex-col items-center p-3 sm:p-4 font-body">
-        {/* ===== Main frame ===== */}
-        <div className="relative w-full max-w-5xl h-full rounded-2xl sm:rounded-[28px] border border-white/45 bg-black/80 overflow-hidden flex flex-col">
-          <CornerFlourish corner="tl" />
-          <CornerFlourish corner="tr" />
-          <CornerFlourish corner="bl" />
-          <CornerFlourish corner="br" />
-
-          {/* Top tab bar */}
-          <div className="shrink-0 px-4 sm:px-10 pt-3 sm:pt-4 pb-2 sm:pb-3">
-            <div className="border border-white/30 px-4 py-2 sm:py-2.5">
-              <div className="flex items-center justify-center gap-6 sm:gap-16">
-                {TABS.map((tabDef, i) => (
-                  <button key={tabDef.key} onClick={() => setState((p) => ({ ...p, tab: tabDef.key }))} className="flex items-center gap-2 group">
-                    {i === 0 && <ArrowMark direction="left" active={state.tab === tabDef.key} />}
-                    <span className={`font-display text-sm sm:text-base tracking-[0.2em] sm:tracking-[0.25em] ${state.tab === tabDef.key ? 'text-white' : 'text-white/35 group-hover:text-white/70'}`}>
-                      {tabDef.label}
-                    </span>
-                    {i === 0 && <ArrowMark direction="right" active={state.tab === tabDef.key} />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <DoubleBar />
-
-          {/* ===== Tab content (animated on tab switch) ===== */}
-          <div key={state.tab} className="anim-panel flex-1 min-h-0 overflow-hidden">
-
-            {/* ----- QUESTS ----- */}
-            {state.tab === 'quests' && (
-              <>
-                {/* Desktop / landscape: side-by-side, both panels visible */}
-                <div className="hidden sm:flex h-full">
-                  <div className="sm:w-[36%] shrink-0 h-full overflow-hidden">
-                    <QuestListPanel
-                      activeMain={activeMain} activeMisc={activeMisc} completed={completedQuests}
-                      selectedId={selectedQuest?.id} onSelect={selectQuest}
-                      onAddQuest={() => setAddQuestOpen(true)} isEmpty={state.quests.length === 0}
-                    />
-                  </div>
-                  <VerticalDoubleBar />
-                  <div key={selectedQuest?.id || 'none'} className="anim-panel flex-1 h-full overflow-hidden">
-                    <QuestDetailPanel
-                      quest={selectedQuest} questXp={questXp} questBonus={questBonus}
-                      titleEdit={titleEdit} noteEdit={noteEdit} objEdit={objEdit}
-                      onToggleObjective={toggleObjective} onDeleteObjective={deleteObjective}
-                      onAddObjective={() => setAddObjOpen(true)}
-                    />
-                  </div>
-                </div>
-
-                {/* Mobile / portrait: master list, detail slides in from the right */}
-                <div className="sm:hidden relative h-full overflow-hidden">
-                  <div
-                    className={`absolute inset-0 h-full transition-transform duration-300 ease-out will-change-transform ${mobileView === 'detail' ? '-translate-x-full' : 'translate-x-0'}`}
-                  >
-                    <QuestListPanel
-                      activeMain={activeMain} activeMisc={activeMisc} completed={completedQuests}
-                      selectedId={selectedQuest?.id} onSelect={selectQuestMobile}
-                      onAddQuest={() => setAddQuestOpen(true)} isEmpty={state.quests.length === 0}
-                    />
-                  </div>
-                  <div
-                    className={`absolute inset-0 h-full transition-transform duration-300 ease-out will-change-transform ${mobileView === 'detail' ? 'translate-x-0' : 'translate-x-full'}`}
-                  >
-                    <div key={selectedQuest?.id || 'none'} className="anim-panel h-full overflow-hidden">
-                      <QuestDetailPanel
-                        quest={selectedQuest} questXp={questXp} questBonus={questBonus}
-                        titleEdit={titleEdit} noteEdit={noteEdit} objEdit={objEdit}
-                        onToggleObjective={toggleObjective} onDeleteObjective={deleteObjective}
-                        onAddObjective={() => setAddObjOpen(true)}
-                        onBack={() => setMobileView('list')}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* ----- STATS ----- */}
-            {state.tab === 'stats' && (
-              <div className="h-full overflow-y-auto overscroll-contain px-4 sm:px-10 py-4 sm:py-6">
-                <FlankedHeading size="large" long>Сводка персонажа</FlankedHeading>
-                <p className="text-base sm:text-base leading-snug text-white/95 mb-2 mt-2 max-w-2xl font-body">
-                  Уровень растёт за счёт выполненных задач и заданий. Каждая задача даёт столько опыта, сколько указано для задания, а завершение всего задания приносит суммарный опыт всех его задач.
-                </p>
-                <FlankedHeading>ХАРАКТЕРИСТИКИ</FlankedHeading>
-                <div className="grid sm:grid-cols-2 gap-8 mt-3">
-                  <div>
-                    <p className="font-display text-base sm:text-sm tracking-[0.2em] text-white/70 mb-2">УРОВЕНЬ {state.level}</p>
-                    <div className="h-2 w-full bg-black/40 border border-white/25 overflow-hidden">
-                      <div className="h-full bg-white" style={{ width: `${Math.min(100, Math.round((state.xp / xpNeeded) * 100))}%` }} />
-                    </div>
-                    <p className="text-base sm:text-sm text-white/55 mt-1 font-body">{state.xp} / {xpNeeded} опыта</p>
-                  </div>
-                  <div className="space-y-1.5 text-base sm:text-sm font-body">
-                    <StatRow label="Всего заданий" value={totalQuests} />
-                    <StatRow label="Выполнено заданий" value={doneQuestsCount} />
-                    <StatRow label="Задачи выполнены" value={`${doneObjectives} / ${totalObjectives}`} />
-                    <StatRow label="Завершено" value={`${percent}%`} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* ----- SYSTEM / NOTES ----- */}
-            {state.tab === 'system' && (
-              <SystemTab state={state} setState={setState} />
-            )}
-          </div>
-
-          <DoubleBar />
-
-          {/* Bottom bar */}
-          <div className="shrink-0 px-4 sm:px-10 py-2 sm:py-2.5 flex items-center justify-between text-xs sm:text-xs font-display">
-            <div className="flex gap-4 sm:gap-6">
-              {state.tab === 'quests' && selectedQuest && (
-                <button onClick={() => toggleActive(selectedQuest.id)} className="tracking-[0.15em] text-white/55 hover:text-white">
-                  <span className="border border-white/30 px-1.5 py-0.5 mr-1">Enter</span>
-                  <span className="hidden sm:inline">{selectedQuest.active ? 'Снять отслеживание' : 'Отслеживать'}</span>
-                </button>
-              )}
-              {state.tab === 'quests' && selectedQuest && (
-                <button onClick={() => setConfirmDelete(selectedQuest)} className="tracking-[0.15em] text-white/35 hover:text-red-300">
-                  Удалить
-                </button>
-              )}
-            </div>
-            <span className="tracking-[0.15em] text-white/55 truncate">
-              {dayName}, {timeStr}, {now.getDate()}-е {monthName}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+      `),
+        levelUp && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center pointer-events-none" },
+            React.createElement("div", { className: "px-10 py-6 border-y border-white bg-black/90 anim-panel" },
+                React.createElement("p", { className: "font-display text-3xl text-center text-white tracking-[0.3em]" }, "\u0423\u0420\u041E\u0412\u0415\u041D\u042C \u041F\u041E\u0412\u042B\u0428\u0415\u041D"),
+                React.createElement("p", { className: "font-display text-lg text-center mt-1 text-white/60 tracking-[0.3em]" },
+                    "\u0423\u0420\u041E\u0412\u0415\u041D\u042C ",
+                    state.level)))),
+        addQuestOpen && (React.createElement(Modal, { onClose: () => setAddQuestOpen(false), title: "\u041D\u041E\u0412\u041E\u0415 \u0417\u0410\u0414\u0410\u041D\u0418\u0415" },
+            React.createElement("div", { className: "space-y-3" },
+                React.createElement(Field, { label: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435" },
+                    React.createElement("input", { autoFocus: true, value: newQuestTitle, onChange: (e) => setNewQuestTitle(e.target.value), onKeyDown: (e) => e.key === 'Enter' && addQuest(), className: "w-full bg-transparent border-b border-white/30 focus:border-white outline-none py-1.5 text-lg text-white font-body" })),
+                React.createElement(Field, { label: "\u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435 (\u043D\u0435\u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E)" },
+                    React.createElement("textarea", { value: newQuestNote, onChange: (e) => setNewQuestNote(e.target.value), rows: 2, className: "w-full bg-transparent border-b border-white/30 focus:border-white outline-none py-1.5 text-base text-white/80 resize-none font-body" })),
+                React.createElement("div", { className: "flex gap-4" },
+                    React.createElement(Field, { label: "\u0420\u0430\u0437\u0434\u0435\u043B" },
+                        React.createElement("select", { value: newQuestCategory, onChange: (e) => setNewQuestCategory(e.target.value), className: "w-full bg-black border border-white/25 outline-none py-1.5 px-2 text-base text-white font-body" },
+                            React.createElement("option", { value: "misc" }, "\u0414\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0435"),
+                            React.createElement("option", { value: "main" }, "\u041E\u0441\u043D\u043E\u0432\u043D\u043E\u0435"))),
+                    React.createElement(Field, { label: "\u0421\u043B\u043E\u0436\u043D\u043E\u0441\u0442\u044C" },
+                        React.createElement("select", { value: newQuestType, onChange: (e) => setNewQuestType(e.target.value), className: "w-full bg-black border border-white/25 outline-none py-1.5 px-2 text-base text-white font-body" },
+                            React.createElement("option", { value: "minor" },
+                                "\u041C\u0430\u043B\u043E\u0435 (",
+                                XP_VALUES.minor,
+                                " XP/\u0437\u0430\u0434\u0430\u0447\u0430)"),
+                            React.createElement("option", { value: "side" },
+                                "\u041F\u043E\u0431\u043E\u0447\u043D\u043E\u0435 (",
+                                XP_VALUES.side,
+                                " XP/\u0437\u0430\u0434\u0430\u0447\u0430)"),
+                            React.createElement("option", { value: "main" },
+                                "\u041E\u0441\u043D\u043E\u0432\u043D\u043E\u0435 (",
+                                XP_VALUES.main,
+                                " XP/\u0437\u0430\u0434\u0430\u0447\u0430)")))),
+                React.createElement("div", { className: "flex justify-end gap-3 pt-2" },
+                    React.createElement(SkyrimButton, { onClick: () => setAddQuestOpen(false), variant: "ghost" }, "\u041E\u0422\u041C\u0415\u041D\u0410"),
+                    React.createElement(SkyrimButton, { onClick: addQuest }, "\u0421\u041E\u0417\u0414\u0410\u0422\u042C"))))),
+        addObjOpen && (React.createElement(Modal, { onClose: () => setAddObjOpen(false), title: "\u041D\u041E\u0412\u0410\u042F \u0417\u0410\u0414\u0410\u0427\u0410" },
+            React.createElement("div", { className: "space-y-3" },
+                React.createElement(Field, { label: "\u0422\u0435\u043A\u0441\u0442 \u0437\u0430\u0434\u0430\u0447\u0438" },
+                    React.createElement("input", { autoFocus: true, value: newObjectiveText, onChange: (e) => setNewObjectiveText(e.target.value), onKeyDown: (e) => e.key === 'Enter' && addObjective(), className: "w-full bg-transparent border-b border-white/30 focus:border-white outline-none py-1.5 text-lg text-white font-body" })),
+                React.createElement("label", { className: "flex items-center gap-2 text-base text-white/60 cursor-pointer font-body" },
+                    React.createElement("input", { type: "checkbox", checked: newObjectiveOptional, onChange: (e) => setNewObjectiveOptional(e.target.checked) }),
+                    "\u041D\u0435\u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u0430\u044F \u0437\u0430\u0434\u0430\u0447\u0430"),
+                React.createElement("div", { className: "flex justify-end gap-3 pt-2" },
+                    React.createElement(SkyrimButton, { onClick: () => setAddObjOpen(false), variant: "ghost" }, "\u041E\u0422\u041C\u0415\u041D\u0410"),
+                    React.createElement(SkyrimButton, { onClick: addObjective }, "\u0414\u041E\u0411\u0410\u0412\u0418\u0422\u042C"))))),
+        confirmDelete && (React.createElement(Modal, { onClose: () => setConfirmDelete(null), title: "\u0423\u0414\u0410\u041B\u0418\u0422\u042C \u0417\u0410\u0414\u0410\u041D\u0418\u0415?" },
+            React.createElement("p", { className: "text-base text-white/80 mb-4 font-body" },
+                "\u00AB",
+                confirmDelete.title,
+                "\u00BB \u0431\u0443\u0434\u0435\u0442 \u0443\u0434\u0430\u043B\u0435\u043D\u043E \u0431\u0435\u0437 \u0432\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438 \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u044F."),
+            React.createElement("div", { className: "flex justify-end gap-3" },
+                React.createElement(SkyrimButton, { onClick: () => setConfirmDelete(null), variant: "ghost" }, "\u041E\u0422\u041C\u0415\u041D\u0410"),
+                React.createElement(SkyrimButton, { onClick: () => deleteQuest(confirmDelete.id), variant: "danger" }, "\u0423\u0414\u0410\u041B\u0418\u0422\u042C")))),
+        React.createElement("div", { className: "h-full bg-vignette flex flex-col items-center p-3 sm:p-4 font-body" },
+            React.createElement("div", { className: "relative w-full max-w-5xl h-full rounded-2xl sm:rounded-[28px] border border-white/45 bg-black/80 overflow-hidden flex flex-col" },
+                React.createElement(CornerFlourish, { corner: "tl" }),
+                React.createElement(CornerFlourish, { corner: "tr" }),
+                React.createElement(CornerFlourish, { corner: "bl" }),
+                React.createElement(CornerFlourish, { corner: "br" }),
+                React.createElement("div", { className: "shrink-0 px-4 sm:px-10 pt-3 sm:pt-4 pb-2 sm:pb-3" },
+                    React.createElement("div", { className: "border border-white/30 px-4 py-2 sm:py-2.5" },
+                        React.createElement("div", { className: "flex items-center justify-center gap-6 sm:gap-16" }, TABS.map((tabDef, i) => (React.createElement("button", { key: tabDef.key, onClick: () => setState((p) => (Object.assign(Object.assign({}, p), { tab: tabDef.key }))), className: "flex items-center gap-2 group" },
+                            i === 0 && React.createElement(ArrowMark, { direction: "left", active: state.tab === tabDef.key }),
+                            React.createElement("span", { className: `font-display text-sm sm:text-base tracking-[0.2em] sm:tracking-[0.25em] ${state.tab === tabDef.key ? 'text-white' : 'text-white/35 group-hover:text-white/70'}` }, tabDef.label),
+                            i === 0 && React.createElement(ArrowMark, { direction: "right", active: state.tab === tabDef.key }))))))),
+                React.createElement(DoubleBar, null),
+                React.createElement("div", { key: state.tab, className: "anim-panel flex-1 min-h-0 overflow-hidden" },
+                    state.tab === 'quests' && (React.createElement(React.Fragment, null,
+                        React.createElement("div", { className: "hidden sm:flex h-full" },
+                            React.createElement("div", { className: "sm:w-[36%] shrink-0 h-full overflow-hidden" },
+                                React.createElement(QuestListPanel, { activeMain: activeMain, activeMisc: activeMisc, completed: completedQuests, selectedId: selectedQuest === null || selectedQuest === void 0 ? void 0 : selectedQuest.id, onSelect: selectQuest, onAddQuest: () => setAddQuestOpen(true), isEmpty: state.quests.length === 0 })),
+                            React.createElement(VerticalDoubleBar, null),
+                            React.createElement("div", { key: (selectedQuest === null || selectedQuest === void 0 ? void 0 : selectedQuest.id) || 'none', className: "anim-panel flex-1 h-full overflow-hidden" },
+                                React.createElement(QuestDetailPanel, { quest: selectedQuest, questXp: questXp, questBonus: questBonus, titleEdit: titleEdit, noteEdit: noteEdit, objEdit: objEdit, onToggleObjective: toggleObjective, onDeleteObjective: deleteObjective, onAddObjective: () => setAddObjOpen(true) }))),
+                        React.createElement("div", { className: "sm:hidden relative h-full overflow-hidden" },
+                            React.createElement("div", { className: `absolute inset-0 h-full transition-transform duration-300 ease-out will-change-transform ${mobileView === 'detail' ? '-translate-x-full' : 'translate-x-0'}` },
+                                React.createElement(QuestListPanel, { activeMain: activeMain, activeMisc: activeMisc, completed: completedQuests, selectedId: selectedQuest === null || selectedQuest === void 0 ? void 0 : selectedQuest.id, onSelect: selectQuestMobile, onAddQuest: () => setAddQuestOpen(true), isEmpty: state.quests.length === 0 })),
+                            React.createElement("div", { className: `absolute inset-0 h-full transition-transform duration-300 ease-out will-change-transform ${mobileView === 'detail' ? 'translate-x-0' : 'translate-x-full'}` },
+                                React.createElement("div", { key: (selectedQuest === null || selectedQuest === void 0 ? void 0 : selectedQuest.id) || 'none', className: "anim-panel h-full overflow-hidden" },
+                                    React.createElement(QuestDetailPanel, { quest: selectedQuest, questXp: questXp, questBonus: questBonus, titleEdit: titleEdit, noteEdit: noteEdit, objEdit: objEdit, onToggleObjective: toggleObjective, onDeleteObjective: deleteObjective, onAddObjective: () => setAddObjOpen(true), onBack: () => setMobileView('list') })))))),
+                    state.tab === 'stats' && (React.createElement("div", { className: "h-full overflow-y-auto overscroll-contain px-4 sm:px-10 py-4 sm:py-6" },
+                        React.createElement(FlankedHeading, { size: "large", long: true }, "\u0421\u0432\u043E\u0434\u043A\u0430 \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430"),
+                        React.createElement("p", { className: "text-base sm:text-base leading-snug text-white/95 mb-2 mt-2 max-w-2xl font-body" }, "\u0423\u0440\u043E\u0432\u0435\u043D\u044C \u0440\u0430\u0441\u0442\u0451\u0442 \u0437\u0430 \u0441\u0447\u0451\u0442 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043D\u044B\u0445 \u0437\u0430\u0434\u0430\u0447 \u0438 \u0437\u0430\u0434\u0430\u043D\u0438\u0439. \u041A\u0430\u0436\u0434\u0430\u044F \u0437\u0430\u0434\u0430\u0447\u0430 \u0434\u0430\u0451\u0442 \u0441\u0442\u043E\u043B\u044C\u043A\u043E \u043E\u043F\u044B\u0442\u0430, \u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0443\u043A\u0430\u0437\u0430\u043D\u043E \u0434\u043B\u044F \u0437\u0430\u0434\u0430\u043D\u0438\u044F, \u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 \u0432\u0441\u0435\u0433\u043E \u0437\u0430\u0434\u0430\u043D\u0438\u044F \u043F\u0440\u0438\u043D\u043E\u0441\u0438\u0442 \u0441\u0443\u043C\u043C\u0430\u0440\u043D\u044B\u0439 \u043E\u043F\u044B\u0442 \u0432\u0441\u0435\u0445 \u0435\u0433\u043E \u0437\u0430\u0434\u0430\u0447."),
+                        React.createElement(FlankedHeading, null, "\u0425\u0410\u0420\u0410\u041A\u0422\u0415\u0420\u0418\u0421\u0422\u0418\u041A\u0418"),
+                        React.createElement("div", { className: "grid sm:grid-cols-2 gap-8 mt-3" },
+                            React.createElement("div", null,
+                                React.createElement("p", { className: "font-display text-base sm:text-sm tracking-[0.2em] text-white/70 mb-2" },
+                                    "\u0423\u0420\u041E\u0412\u0415\u041D\u042C ",
+                                    state.level),
+                                React.createElement("div", { className: "h-2 w-full bg-black/40 border border-white/25 overflow-hidden" },
+                                    React.createElement("div", { className: "h-full bg-white", style: { width: `${Math.min(100, Math.round((state.xp / xpNeeded) * 100))}%` } })),
+                                React.createElement("p", { className: "text-base sm:text-sm text-white/55 mt-1 font-body" },
+                                    state.xp,
+                                    " / ",
+                                    xpNeeded,
+                                    " \u043E\u043F\u044B\u0442\u0430")),
+                            React.createElement("div", { className: "space-y-1.5 text-base sm:text-sm font-body" },
+                                React.createElement(StatRow, { label: "\u0412\u0441\u0435\u0433\u043E \u0437\u0430\u0434\u0430\u043D\u0438\u0439", value: totalQuests }),
+                                React.createElement(StatRow, { label: "\u0412\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043E \u0437\u0430\u0434\u0430\u043D\u0438\u0439", value: doneQuestsCount }),
+                                React.createElement(StatRow, { label: "\u0417\u0430\u0434\u0430\u0447\u0438 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u044B", value: `${doneObjectives} / ${totalObjectives}` }),
+                                React.createElement(StatRow, { label: "\u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E", value: `${percent}%` }))))),
+                    state.tab === 'system' && (React.createElement(SystemTab, { state: state, setState: setState }))),
+                React.createElement(DoubleBar, null),
+                React.createElement("div", { className: "shrink-0 px-4 sm:px-10 py-2 sm:py-2.5 flex items-center justify-between text-xs sm:text-xs font-display" },
+                    React.createElement("div", { className: "flex gap-4 sm:gap-6" },
+                        state.tab === 'quests' && selectedQuest && (React.createElement("button", { onClick: () => toggleActive(selectedQuest.id), className: "tracking-[0.15em] text-white/55 hover:text-white" },
+                            React.createElement("span", { className: "border border-white/30 px-1.5 py-0.5 mr-1" }, "Enter"),
+                            React.createElement("span", { className: "hidden sm:inline" }, selectedQuest.active ? 'Снять отслеживание' : 'Отслеживать'))),
+                        state.tab === 'quests' && selectedQuest && (React.createElement("button", { onClick: () => setConfirmDelete(selectedQuest), className: "tracking-[0.15em] text-white/35 hover:text-red-300" }, "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"))),
+                    React.createElement("span", { className: "tracking-[0.15em] text-white/55 truncate" },
+                        dayName,
+                        ", ",
+                        timeStr,
+                        ", ",
+                        now.getDate(),
+                        "-\u0435 ",
+                        monthName))))));
 }
-
 // ---------- Quest list panel (left column / mobile master view) ----------
 function QuestListPanel({ activeMain, activeMisc, completed, selectedId, onSelect, onAddQuest, isEmpty }) {
-  return (
-    <div className="h-full flex flex-col px-4 sm:px-8 py-3 sm:py-5 overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 pr-1">
-        {activeMain.length > 0 && (
-          <>
-            <p className="font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1">ОСНОВНЫЕ</p>
-            {activeMain.map((q) => <QuestListItem key={q.id} q={q} selected={selectedId === q.id} onSelect={onSelect} />)}
-          </>
-        )}
-        {activeMisc.length > 0 && (
-          <>
-            <p className="font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1 mt-3">ДОПОЛНИТЕЛЬНЫЕ</p>
-            {activeMisc.map((q) => <QuestListItem key={q.id} q={q} selected={selectedId === q.id} onSelect={onSelect} />)}
-          </>
-        )}
-        {completed.length > 0 && (
-          <>
-            <p className="font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1 mt-3">ВЫПОЛНЕННЫЕ</p>
-            {completed.map((q) => <QuestListItem key={q.id} q={q} selected={selectedId === q.id} onSelect={onSelect} />)}
-          </>
-        )}
-        {isEmpty && <p className="text-base italic text-white/35 py-6 text-center">Список заданий пуст</p>}
-      </div>
-      <button onClick={onAddQuest}
-        className="shrink-0 mt-3 font-display text-xs sm:text-xs tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 py-2 transition-colors">
-        + НОВОЕ ЗАДАНИЕ
-      </button>
-    </div>
-  );
+    return (React.createElement("div", { className: "h-full flex flex-col px-4 sm:px-8 py-3 sm:py-5 overflow-hidden" },
+        React.createElement("div", { className: "flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-2 pr-1" },
+            activeMain.length > 0 && (React.createElement(React.Fragment, null,
+                React.createElement("p", { className: "font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1" }, "\u041E\u0421\u041D\u041E\u0412\u041D\u042B\u0415"),
+                activeMain.map((q) => React.createElement(QuestListItem, { key: q.id, q: q, selected: selectedId === q.id, onSelect: onSelect })))),
+            activeMisc.length > 0 && (React.createElement(React.Fragment, null,
+                React.createElement("p", { className: "font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1 mt-3" }, "\u0414\u041E\u041F\u041E\u041B\u041D\u0418\u0422\u0415\u041B\u042C\u041D\u042B\u0415"),
+                activeMisc.map((q) => React.createElement(QuestListItem, { key: q.id, q: q, selected: selectedId === q.id, onSelect: onSelect })))),
+            completed.length > 0 && (React.createElement(React.Fragment, null,
+                React.createElement("p", { className: "font-display text-[11px] sm:text-xs tracking-[0.3em] text-white/35 mb-1 mt-3" }, "\u0412\u042B\u041F\u041E\u041B\u041D\u0415\u041D\u041D\u042B\u0415"),
+                completed.map((q) => React.createElement(QuestListItem, { key: q.id, q: q, selected: selectedId === q.id, onSelect: onSelect })))),
+            isEmpty && React.createElement("p", { className: "text-base italic text-white/35 py-6 text-center" }, "\u0421\u043F\u0438\u0441\u043E\u043A \u0437\u0430\u0434\u0430\u043D\u0438\u0439 \u043F\u0443\u0441\u0442")),
+        React.createElement("button", { onClick: onAddQuest, className: "shrink-0 mt-3 font-display text-xs sm:text-xs tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 py-2 transition-colors" }, "+ \u041D\u041E\u0412\u041E\u0415 \u0417\u0410\u0414\u0410\u041D\u0418\u0415")));
 }
-
 // ---------- Quest detail panel (right column / mobile detail view) ----------
 // Entire panel scrolls as one unit, so nothing gets clipped regardless of content length.
 function QuestDetailPanel({ quest, questXp, questBonus, titleEdit, noteEdit, objEdit, onToggleObjective, onDeleteObjective, onAddObjective, onBack }) {
-  return (
-    <div className="h-full overflow-y-auto overscroll-contain px-4 sm:px-8 py-3 sm:py-5">
-      {onBack && (
-        <button onClick={onBack} className="mb-2 flex items-center gap-2 font-display text-sm tracking-[0.2em] text-white/55 hover:text-white">
-          <ArrowMark direction="left" active /> ЗАДАНИЯ
-        </button>
-      )}
-
-      {quest ? (
-        <>
-          {/* Title */}
-          {titleEdit.editing ? (
-            <div className="flex items-center justify-center gap-2 sm:gap-3 my-1">
-              <FlankOrnament long />
-              <input
-                autoFocus value={titleEdit.draft} onChange={(e) => titleEdit.setDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') titleEdit.save(); if (e.key === 'Escape') titleEdit.cancel(); }}
-                onBlur={titleEdit.save}
-                className="font-display tracking-[0.18em] text-white uppercase bg-transparent border-b border-white/40 text-center outline-none text-lg sm:text-2xl w-2/3 max-w-xs"
-              />
-              <FlankOrnament flip long />
-            </div>
-          ) : (
-            <div onClick={titleEdit.start} className="cursor-text">
-              <FlankedHeading size="large" long>{quest.title}</FlankedHeading>
-            </div>
-          )}
-
-          {/* Note */}
-          {noteEdit.editing ? (
-            <div className="mb-1 mt-2">
-              <textarea
-                autoFocus value={noteEdit.draft} onChange={(e) => noteEdit.setDraft(e.target.value)} rows={3}
-                className="w-full bg-transparent border border-white/25 focus:border-white/60 outline-none px-2 py-1.5 text-base text-white resize-none leading-snug font-body"
-              />
-              <div className="flex justify-end gap-2 mt-1">
-                <SkyrimButton onClick={noteEdit.cancel} variant="ghost">ОТМЕНА</SkyrimButton>
-                <SkyrimButton onClick={noteEdit.save}>СОХРАНИТЬ</SkyrimButton>
-              </div>
-            </div>
-          ) : (
-            <p
-              onClick={noteEdit.start}
-              className="text-base leading-snug text-white/95 mb-1 mt-2 max-w-2xl cursor-text hover:text-white transition-colors font-body"
-              title="Нажмите, чтобы редактировать заметку"
-            >
-              {quest.note || <span className="italic text-white/35">Нажмите, чтобы добавить заметку…</span>}
-            </p>
-          )}
-
-          {/* XP info line */}
-          {quest.objectives.length > 0 && (
-            <p className="text-xs text-white/35 font-display tracking-wider mb-1">
-              +{questXp} XP за задачу · бонус за квест: +{questBonus} XP
-            </p>
-          )}
-
-          <FlankedHeading>ЗАДАЧИ</FlankedHeading>
-
-          {/* Objectives — normal flow, panel itself scrolls */}
-          <div className="space-y-2 mt-1">
-            {quest.objectives.length === 0 && (
-              <p className="text-base italic text-white/35 py-1 font-body">Пока нет задач — добавьте первую.</p>
-            )}
-            {quest.objectives.map((o) => (
-              <div key={o.id} className="flex items-start gap-2 group">
-                <button onClick={() => onToggleObjective(quest.id, o.id)} className="shrink-0 mt-[1px]">
-                  <Diamond filled={o.done} optional={o.optional} />
-                </button>
-                {objEdit.editingId === o.id ? (
-                  <input
-                    autoFocus value={objEdit.draft} onChange={(e) => objEdit.setDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') objEdit.save(o.id); if (e.key === 'Escape') objEdit.cancel(); }}
-                    onBlur={() => objEdit.save(o.id)}
-                    className="flex-1 min-w-0 bg-transparent border-b border-white/40 outline-none text-base text-white font-body"
-                  />
-                ) : (
-                  <span
-                    onClick={() => objEdit.start(o)}
-                    className={`flex-1 min-w-0 cursor-text break-words text-base leading-snug font-body ${o.done ? 'line-through text-white/30' : o.optional ? 'text-white/45 italic' : 'text-white/65'}`}
-                  >
-                    {o.text}
-                  </span>
-                )}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-white/30 font-display">+{questXp}</span>
-                  <button onClick={() => onDeleteObjective(o.id)} className="opacity-0 group-hover:opacity-100 text-white/35 hover:text-red-300 text-xs transition-opacity">✕</button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <button onClick={onAddObjective}
-            className="self-start mt-2 font-display text-xs tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 px-4 py-1.5 transition-colors">
-            + ЗАДАЧА
-          </button>
-
-          {quest.done && <p className="mt-2 font-display text-base tracking-[0.3em] text-white">ЗАДАНИЕ ВЫПОЛНЕНО</p>}
-        </>
-      ) : (
-        <p className="text-center italic text-white/35 py-12 font-body">Выберите задание слева</p>
-      )}
-    </div>
-  );
+    return (React.createElement("div", { className: "h-full overflow-y-auto overscroll-contain px-4 sm:px-8 py-3 sm:py-5" },
+        onBack && (React.createElement("button", { onClick: onBack, className: "mb-2 flex items-center gap-2 font-display text-sm tracking-[0.2em] text-white/55 hover:text-white" },
+            React.createElement(ArrowMark, { direction: "left", active: true }),
+            " \u0417\u0410\u0414\u0410\u041D\u0418\u042F")),
+        quest ? (React.createElement(React.Fragment, null,
+            titleEdit.editing ? (React.createElement("div", { className: "flex items-center justify-center gap-2 sm:gap-3 my-1" },
+                React.createElement(FlankOrnament, { long: true }),
+                React.createElement("input", { autoFocus: true, value: titleEdit.draft, onChange: (e) => titleEdit.setDraft(e.target.value), onKeyDown: (e) => { if (e.key === 'Enter')
+                        titleEdit.save(); if (e.key === 'Escape')
+                        titleEdit.cancel(); }, onBlur: titleEdit.save, className: "font-display tracking-[0.18em] text-white uppercase bg-transparent border-b border-white/40 text-center outline-none text-lg sm:text-2xl w-2/3 max-w-xs" }),
+                React.createElement(FlankOrnament, { flip: true, long: true }))) : (React.createElement("div", { onClick: titleEdit.start, className: "cursor-text" },
+                React.createElement(FlankedHeading, { size: "large", long: true }, quest.title))),
+            noteEdit.editing ? (React.createElement("div", { className: "mb-1 mt-2" },
+                React.createElement("textarea", { autoFocus: true, value: noteEdit.draft, onChange: (e) => noteEdit.setDraft(e.target.value), rows: 3, className: "w-full bg-transparent border border-white/25 focus:border-white/60 outline-none px-2 py-1.5 text-base text-white resize-none leading-snug font-body" }),
+                React.createElement("div", { className: "flex justify-end gap-2 mt-1" },
+                    React.createElement(SkyrimButton, { onClick: noteEdit.cancel, variant: "ghost" }, "\u041E\u0422\u041C\u0415\u041D\u0410"),
+                    React.createElement(SkyrimButton, { onClick: noteEdit.save }, "\u0421\u041E\u0425\u0420\u0410\u041D\u0418\u0422\u042C")))) : (React.createElement("p", { onClick: noteEdit.start, className: "text-base leading-snug text-white/95 mb-1 mt-2 max-w-2xl cursor-text hover:text-white transition-colors font-body", title: "\u041D\u0430\u0436\u043C\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0440\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0437\u0430\u043C\u0435\u0442\u043A\u0443" }, quest.note || React.createElement("span", { className: "italic text-white/35" }, "\u041D\u0430\u0436\u043C\u0438\u0442\u0435, \u0447\u0442\u043E\u0431\u044B \u0434\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0437\u0430\u043C\u0435\u0442\u043A\u0443\u2026"))),
+            quest.objectives.length > 0 && (React.createElement("p", { className: "text-xs text-white/35 font-display tracking-wider mb-1" },
+                "+",
+                questXp,
+                " XP \u0437\u0430 \u0437\u0430\u0434\u0430\u0447\u0443 \u00B7 \u0431\u043E\u043D\u0443\u0441 \u0437\u0430 \u043A\u0432\u0435\u0441\u0442: +",
+                questBonus,
+                " XP")),
+            React.createElement(FlankedHeading, null, "\u0417\u0410\u0414\u0410\u0427\u0418"),
+            React.createElement("div", { className: "space-y-2 mt-1" },
+                quest.objectives.length === 0 && (React.createElement("p", { className: "text-base italic text-white/35 py-1 font-body" }, "\u041F\u043E\u043A\u0430 \u043D\u0435\u0442 \u0437\u0430\u0434\u0430\u0447 \u2014 \u0434\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u043F\u0435\u0440\u0432\u0443\u044E.")),
+                quest.objectives.map((o) => (React.createElement("div", { key: o.id, className: "flex items-start gap-2 group" },
+                    React.createElement("button", { onClick: () => onToggleObjective(quest.id, o.id), className: "shrink-0 mt-[1px]" },
+                        React.createElement(Diamond, { filled: o.done, optional: o.optional })),
+                    objEdit.editingId === o.id ? (React.createElement("input", { autoFocus: true, value: objEdit.draft, onChange: (e) => objEdit.setDraft(e.target.value), onKeyDown: (e) => { if (e.key === 'Enter')
+                            objEdit.save(o.id); if (e.key === 'Escape')
+                            objEdit.cancel(); }, onBlur: () => objEdit.save(o.id), className: "flex-1 min-w-0 bg-transparent border-b border-white/40 outline-none text-base text-white font-body" })) : (React.createElement("span", { onClick: () => objEdit.start(o), className: `flex-1 min-w-0 cursor-text break-words text-base leading-snug font-body ${o.done ? 'line-through text-white/30' : o.optional ? 'text-white/45 italic' : 'text-white/65'}` }, o.text)),
+                    React.createElement("div", { className: "flex items-center gap-2 shrink-0" },
+                        React.createElement("span", { className: "text-xs text-white/30 font-display" },
+                            "+",
+                            questXp),
+                        React.createElement("button", { onClick: () => onDeleteObjective(o.id), className: "opacity-0 group-hover:opacity-100 text-white/35 hover:text-red-300 text-xs transition-opacity" }, "\u2715")))))),
+            React.createElement("button", { onClick: onAddObjective, className: "self-start mt-2 font-display text-xs tracking-[0.25em] text-white/55 hover:text-white border border-white/20 hover:border-white/60 px-4 py-1.5 transition-colors" }, "+ \u0417\u0410\u0414\u0410\u0427\u0410"),
+            quest.done && React.createElement("p", { className: "mt-2 font-display text-base tracking-[0.3em] text-white" }, "\u0417\u0410\u0414\u0410\u041D\u0418\u0415 \u0412\u042B\u041F\u041E\u041B\u041D\u0415\u041D\u041E"))) : (React.createElement("p", { className: "text-center italic text-white/35 py-12 font-body" }, "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0437\u0430\u0434\u0430\u043D\u0438\u0435 \u0441\u043B\u0435\u0432\u0430"))));
 }
-
 function SystemTab({ state, setState }) {
-  const [newNote, setNewNote] = useState('');
-  const addNote = () => {
-    if (!newNote.trim()) return;
-    setState((prev) => ({ ...prev, notes: [{ id: uid(), text: newNote.trim(), createdAt: Date.now() }, ...prev.notes] }));
-    setNewNote('');
-  };
-  const deleteNote = (id) => setState((prev) => ({ ...prev, notes: prev.notes.filter((n) => n.id !== id) }));
-
-  return (
-    <div className="h-full overflow-y-auto overscroll-contain px-4 sm:px-10 py-3 sm:py-6">
-      <FlankedHeading size="large" long>Дневник</FlankedHeading>
-      <FlankedHeading>НОВАЯ ЗАПИСЬ</FlankedHeading>
-      <div className="flex gap-2 mb-3 mt-3 max-w-2xl">
-        <textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Запишите мысль, идею или напоминание..." rows={2}
-          className="flex-1 bg-transparent border border-white/25 focus:border-white/60 outline-none px-3 py-2 text-base text-white placeholder:text-white/35 resize-none font-body" />
-        <SkyrimButton onClick={addNote}>ЗАПИСАТЬ</SkyrimButton>
-      </div>
-      <div className="space-y-2 max-w-2xl">
-        {state.notes.length === 0 ? (
-          <p className="italic text-white/35 font-body">Страницы дневника пока пусты.</p>
-        ) : (
-          state.notes.map((n) => (
-            <div key={n.id} className="border border-white/15 p-3 flex justify-between gap-3">
-              <div>
-                <p className="text-base whitespace-pre-wrap text-white/90 font-body">{n.text}</p>
-                <p className="text-sm text-white/35 mt-1 font-body">{new Date(n.createdAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</p>
-              </div>
-              <button onClick={() => deleteNote(n.id)} className="text-white/35 hover:text-red-300 text-sm shrink-0">✕</button>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
+    const [newNote, setNewNote] = useState('');
+    const addNote = () => {
+        if (!newNote.trim())
+            return;
+        setState((prev) => (Object.assign(Object.assign({}, prev), { notes: [{ id: uid(), text: newNote.trim(), createdAt: Date.now() }, ...prev.notes] })));
+        setNewNote('');
+    };
+    const deleteNote = (id) => setState((prev) => (Object.assign(Object.assign({}, prev), { notes: prev.notes.filter((n) => n.id !== id) })));
+    return (React.createElement("div", { className: "h-full overflow-y-auto overscroll-contain px-4 sm:px-10 py-3 sm:py-6" },
+        React.createElement(FlankedHeading, { size: "large", long: true }, "\u0414\u043D\u0435\u0432\u043D\u0438\u043A"),
+        React.createElement(FlankedHeading, null, "\u041D\u041E\u0412\u0410\u042F \u0417\u0410\u041F\u0418\u0421\u042C"),
+        React.createElement("div", { className: "flex gap-2 mb-3 mt-3 max-w-2xl" },
+            React.createElement("textarea", { value: newNote, onChange: (e) => setNewNote(e.target.value), placeholder: "\u0417\u0430\u043F\u0438\u0448\u0438\u0442\u0435 \u043C\u044B\u0441\u043B\u044C, \u0438\u0434\u0435\u044E \u0438\u043B\u0438 \u043D\u0430\u043F\u043E\u043C\u0438\u043D\u0430\u043D\u0438\u0435...", rows: 2, className: "flex-1 bg-transparent border border-white/25 focus:border-white/60 outline-none px-3 py-2 text-base text-white placeholder:text-white/35 resize-none font-body" }),
+            React.createElement(SkyrimButton, { onClick: addNote }, "\u0417\u0410\u041F\u0418\u0421\u0410\u0422\u042C")),
+        React.createElement("div", { className: "space-y-2 max-w-2xl" }, state.notes.length === 0 ? (React.createElement("p", { className: "italic text-white/35 font-body" }, "\u0421\u0442\u0440\u0430\u043D\u0438\u0446\u044B \u0434\u043D\u0435\u0432\u043D\u0438\u043A\u0430 \u043F\u043E\u043A\u0430 \u043F\u0443\u0441\u0442\u044B.")) : (state.notes.map((n) => (React.createElement("div", { key: n.id, className: "border border-white/15 p-3 flex justify-between gap-3" },
+            React.createElement("div", null,
+                React.createElement("p", { className: "text-base whitespace-pre-wrap text-white/90 font-body" }, n.text),
+                React.createElement("p", { className: "text-sm text-white/35 mt-1 font-body" }, new Date(n.createdAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' }))),
+            React.createElement("button", { onClick: () => deleteNote(n.id), className: "text-white/35 hover:text-red-300 text-sm shrink-0" }, "\u2715"))))))));
 }
-
 function StatRow({ label, value }) {
-  return (
-    <div className="flex justify-between border-b border-white/10 pb-1">
-      <span className="text-white/55">{label}</span>
-      <span className="text-white font-display tracking-wider">{value}</span>
-    </div>
-  );
+    return (React.createElement("div", { className: "flex justify-between border-b border-white/10 pb-1" },
+        React.createElement("span", { className: "text-white/55" }, label),
+        React.createElement("span", { className: "text-white font-display tracking-wider" }, value)));
 }
-
 function QuestListItem({ q, selected, onSelect }) {
-  return (
-    <button onClick={() => onSelect(q.id)}
-      className={`w-full text-left flex items-center justify-between gap-2 py-1 font-display tracking-[0.1em] transition-colors uppercase ${
-        selected ? 'text-white text-base sm:text-base font-medium' : q.done ? 'text-white/30 line-through text-sm sm:text-sm' : 'text-white/55 hover:text-white/85 text-sm sm:text-sm'
-      }`}>
-      <span className="truncate flex items-center gap-1.5">
-        {q.active && <span className="w-1.5 h-1.5 rotate-45 bg-white shrink-0" />}
-        {q.title}
-      </span>
-      {selected && <ArrowMark direction="right" active />}
-    </button>
-  );
+    return (React.createElement("button", { onClick: () => onSelect(q.id), className: `w-full text-left flex items-center justify-between gap-2 py-1 font-display tracking-[0.1em] transition-colors uppercase ${selected ? 'text-white text-base sm:text-base font-medium' : q.done ? 'text-white/30 line-through text-sm sm:text-sm' : 'text-white/55 hover:text-white/85 text-sm sm:text-sm'}` },
+        React.createElement("span", { className: "truncate flex items-center gap-1.5" },
+            q.active && React.createElement("span", { className: "w-1.5 h-1.5 rotate-45 bg-white shrink-0" }),
+            q.title),
+        selected && React.createElement(ArrowMark, { direction: "right", active: true })));
 }
-
 function Modal({ title, children, onClose }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="anim-panel w-full max-w-md bg-[#050607] border border-white/40 rounded-2xl p-5 font-body" onClick={(e) => e.stopPropagation()}>
-        <FlankedHeading>{title}</FlankedHeading>
-        <div className="mt-3">{children}</div>
-      </div>
-    </div>
-  );
+    return (React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4", onClick: onClose },
+        React.createElement("div", { className: "anim-panel w-full max-w-md bg-[#050607] border border-white/40 rounded-2xl p-5 font-body", onClick: (e) => e.stopPropagation() },
+            React.createElement(FlankedHeading, null, title),
+            React.createElement("div", { className: "mt-3" }, children))));
 }
-
 function Field({ label, children }) {
-  return (
-    <div className="flex-1">
-      <p className="font-display text-[10px] tracking-[0.25em] text-white/40 mb-1">{label}</p>
-      {children}
-    </div>
-  );
+    return (React.createElement("div", { className: "flex-1" },
+        React.createElement("p", { className: "font-display text-[10px] tracking-[0.25em] text-white/40 mb-1" }, label),
+        children));
 }
-
 function SkyrimButton({ children, onClick, variant = 'primary' }) {
-  const styles = {
-    primary: 'border-white/70 text-white hover:bg-white/10',
-    ghost: 'border-white/25 text-white/55 hover:text-white hover:border-white/60',
-    danger: 'border-red-400/60 text-red-300 hover:bg-red-400/10',
-  };
-  return (
-    <button onClick={onClick} className={`font-display text-xs tracking-[0.2em] border px-4 py-2 transition-colors ${styles[variant]}`}>
-      {children}
-    </button>
-  );
+    const styles = {
+        primary: 'border-white/70 text-white hover:bg-white/10',
+        ghost: 'border-white/25 text-white/55 hover:text-white hover:border-white/60',
+        danger: 'border-red-400/60 text-red-300 hover:bg-red-400/10',
+    };
+    return (React.createElement("button", { onClick: onClick, className: `font-display text-xs tracking-[0.2em] border px-4 py-2 transition-colors ${styles[variant]}` }, children));
 }
-
-
 const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+root.render(React.createElement(ErrorBoundary, null,
+    React.createElement(App, null)));
 
 </script>
 </body>
