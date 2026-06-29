@@ -182,46 +182,66 @@ const defaultState = {
 };
 // ---------- Decorative pieces ----------
 const CornerFlourish = ({ corner }) => {
-    const transforms = {
-        tl: '', tr: 'scale(-1,1) translate(-100,0)', bl: 'scale(1,-1) translate(0,-100)', br: 'scale(-1,-1) translate(-100,-100)',
+    const tx = {
+        tl: '',
+        tr: 'scale(-1,1) translate(-100,0)',
+        bl: 'scale(1,-1) translate(0,-100)',
+        br: 'scale(-1,-1) translate(-100,-100)',
     };
     const pos = { tl: 'top-0 left-0', tr: 'top-0 right-0', bl: 'bottom-0 left-0', br: 'bottom-0 right-0' };
-    return (React.createElement("svg", { className: `absolute ${pos[corner]} w-10 h-10 sm:w-14 sm:h-14 pointer-events-none z-10`, viewBox: "0 0 100 100" },
-        React.createElement("g", { transform: transforms[corner], stroke: "#ffffff", strokeWidth: "1", fill: "none", opacity: "0.8" },
-            React.createElement("path", { d: "M14 2 Q 2 2 2 14" }),
-            React.createElement("path", { d: "M2 22 Q 30 22 30 50" }),
-            React.createElement("path", { d: "M22 2 Q 22 30 50 30" }),
-            React.createElement("path", { d: "M2 14 L2 40", strokeWidth: "0.7", opacity: "0.5" }),
-            React.createElement("path", { d: "M14 2 L40 2", strokeWidth: "0.7", opacity: "0.5" }),
-            React.createElement("circle", { cx: "6", cy: "6", r: "1.4", fill: "#ffffff", stroke: "none" }))));
+    const O = 'rgba(200,185,155,0.92)';
+    const Oi = 'rgba(200,185,155,0.48)';
+    return (React.createElement("svg", { className: `absolute ${pos[corner]} w-11 h-11 sm:w-16 sm:h-16 pointer-events-none z-10`, viewBox: "0 0 100 100" },
+        React.createElement("g", { transform: tx[corner], fill: "none" },
+            React.createElement("path", { d: "M2 44 L2 2 L44 2", stroke: O, strokeWidth: "1.8", strokeLinecap: "square" }),
+            React.createElement("line", { x1: "0", y1: "44", x2: "7", y2: "44", stroke: O, strokeWidth: "1.8", strokeLinecap: "square" }),
+            React.createElement("line", { x1: "44", y1: "0", x2: "44", y2: "7", stroke: O, strokeWidth: "1.8", strokeLinecap: "square" }),
+            React.createElement("rect", { x: "0.5", y: "0.5", width: "6", height: "6", fill: O }),
+            React.createElement("path", { d: "M15 58 L15 15 L58 15", stroke: Oi, strokeWidth: "1", strokeLinecap: "square" }),
+            React.createElement("line", { x1: "13", y1: "58", x2: "19", y2: "58", stroke: Oi, strokeWidth: "1", strokeLinecap: "square" }),
+            React.createElement("line", { x1: "58", y1: "13", x2: "58", y2: "19", stroke: Oi, strokeWidth: "1", strokeLinecap: "square" }),
+            React.createElement("rect", { x: "13.5", y: "13.5", width: "4", height: "4", fill: Oi }))));
 };
-const DoubleBar = () => (React.createElement("div", { className: "relative h-[6px] mx-4 sm:mx-6 shrink-0" },
-    React.createElement("div", { className: "absolute top-0 left-0 right-0 h-[1px] bg-white/65" }),
-    React.createElement("div", { className: "absolute bottom-[1px] left-0 right-0 h-[1px] bg-white/30" })));
+const DoubleBar = () => (React.createElement("div", { className: "relative h-[10px] shrink-0 flex items-center" },
+    React.createElement("div", { className: "absolute top-0 left-0 right-0 h-[1px] bg-[rgba(200,185,155,0.6)]" }),
+    React.createElement("div", { className: "absolute bottom-0 left-0 right-0 h-[1px] bg-[rgba(200,185,155,0.25)]" }),
+    React.createElement("div", { className: "absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 z-10" },
+        React.createElement("svg", { width: "12", height: "10", viewBox: "0 0 12 10" },
+            React.createElement("rect", { x: "1", y: "1", width: "10", height: "8", transform: "rotate(0)", fill: "#07090a" }),
+            React.createElement("path", { d: "M6 0 L12 5 L6 10 L0 5 Z", fill: "rgba(200,185,155,0.8)" })))));
 // Vertical double-line divider between columns on desktop/landscape, with diamond marker at top
-const VerticalDoubleBar = () => (React.createElement("div", { className: "hidden sm:flex relative px-[5px] my-5 shrink-0" },
+const VerticalDoubleBar = () => (React.createElement("div", { className: "hidden sm:flex relative px-[5px] my-4 shrink-0" },
     React.createElement("svg", { className: "absolute -top-[7px] left-1/2 -translate-x-1/2 z-10", width: "14", height: "14", viewBox: "0 0 14 14" },
-        React.createElement("rect", { x: "2", y: "2", width: "10", height: "10", transform: "rotate(45 7 7)", fill: "#070809", stroke: "#ffffff", strokeWidth: "1.2" })),
+        React.createElement("rect", { x: "2", y: "2", width: "10", height: "10", transform: "rotate(45 7 7)", fill: "#07090a", stroke: "rgba(200,185,155,0.85)", strokeWidth: "1.2" })),
+    React.createElement("svg", { className: "absolute -bottom-[7px] left-1/2 -translate-x-1/2 z-10", width: "14", height: "14", viewBox: "0 0 14 14" },
+        React.createElement("rect", { x: "2", y: "2", width: "10", height: "10", transform: "rotate(45 7 7)", fill: "#07090a", stroke: "rgba(200,185,155,0.85)", strokeWidth: "1.2" })),
     React.createElement("div", { className: "flex gap-[3px] h-full" },
-        React.createElement("div", { className: "w-[1px] h-full bg-white/55" }),
-        React.createElement("div", { className: "w-[1px] h-full bg-white/25" }))));
+        React.createElement("div", { className: "w-[1px] h-full bg-[rgba(200,185,155,0.5)]" }),
+        React.createElement("div", { className: "w-[1px] h-full bg-[rgba(200,185,155,0.2)]" }))));
 const ArrowMark = ({ direction = 'left', active }) => (React.createElement("svg", { width: "15", height: "15", viewBox: "0 0 14 14", className: direction === 'right' ? 'rotate-180' : '' },
-    React.createElement("path", { d: "M9 1 L3 7 L9 13", fill: "none", stroke: active ? '#ffffff' : '#7d8896', strokeWidth: "1.3" })));
+    React.createElement("path", { d: "M9 1 L3 7 L9 13", fill: "none", stroke: active ? 'rgba(220,210,185,1)' : 'rgba(200,185,155,0.35)', strokeWidth: "1.3" })));
 const Diamond = ({ filled, optional }) => (React.createElement("svg", { width: "16", height: "16", viewBox: "0 0 14 14", className: "shrink-0 mt-[2px]" },
-    React.createElement("rect", { x: "2", y: "2", width: "10", height: "10", transform: "rotate(45 7 7)", fill: filled ? '#ffffff' : 'transparent', stroke: optional ? '#6e7986' : '#ffffff', strokeWidth: "1.1" })));
+    React.createElement("rect", { x: "2", y: "2", width: "10", height: "10", transform: "rotate(45 7 7)", fill: filled ? 'rgba(220,210,185,1)' : 'transparent', stroke: optional ? 'rgba(120,130,140,0.7)' : 'rgba(200,185,155,0.9)', strokeWidth: "1.1" })));
 // Ornamental flanking piece: line — diamond(s) — arrow tip — short line.
-const FlankOrnament = ({ flip, long }) => (React.createElement("svg", { width: long ? 90 : 60, height: "14", viewBox: `0 0 ${long ? 90 : 60} 14`, className: flip ? 'scale-x-[-1]' : '', preserveAspectRatio: "none" },
-    React.createElement("g", { stroke: "#ffffff", strokeWidth: "1", fill: "none", opacity: "0.75" },
-        React.createElement("line", { x1: "0", y1: "7", x2: long ? 64 : 40, y2: "7" }),
-        React.createElement("rect", { x: (long ? 64 : 40) - 26, y: "4", width: "6", height: "6", transform: `rotate(45 ${(long ? 64 : 40) - 23} 7)` }),
-        long && React.createElement("rect", { x: (long ? 64 : 40) - 44, y: "4", width: "6", height: "6", transform: `rotate(45 ${(long ? 64 : 40) - 41} 7)` }),
-        React.createElement("path", { d: `M${long ? 64 : 40} 1 L${(long ? 64 : 40) + 14} 7 L${long ? 64 : 40} 13 Z` }),
-        React.createElement("line", { x1: (long ? 64 : 40) + 14, y1: "7", x2: long ? 90 : 60, y2: "7" }))));
+const FlankOrnament = ({ flip, long }) => {
+    const W = long ? 90 : 60;
+    const mid = long ? 62 : 40;
+    const C1 = 'rgba(200,185,155,0.75)';
+    const C2 = 'rgba(200,185,155,0.5)';
+    return (React.createElement("svg", { width: W, height: "14", viewBox: `0 0 ${W} 14`, className: flip ? 'scale-x-[-1]' : '', preserveAspectRatio: "none" },
+        React.createElement("g", { fill: "none" },
+            React.createElement("line", { x1: "0", y1: "7", x2: mid - 2, y2: "7", stroke: C1, strokeWidth: "1" }),
+            long && React.createElement("rect", { x: mid - 40, y: "5", width: "4", height: "4", transform: `rotate(45 ${mid - 38} 7)`, stroke: C2, strokeWidth: "1" }),
+            React.createElement("rect", { x: mid - 20, y: "5", width: "4", height: "4", transform: `rotate(45 ${mid - 18} 7)`, stroke: C1, strokeWidth: "1" }),
+            React.createElement("rect", { x: mid - 10, y: "5", width: "4", height: "4", transform: `rotate(45 ${mid - 8} 7)`, stroke: C1, strokeWidth: "1", fill: C2 }),
+            React.createElement("path", { d: `M${mid} 1.5 L${mid + 12} 7 L${mid} 12.5 Z`, fill: C1 }),
+            React.createElement("line", { x1: mid + 12, y1: "7", x2: W, y2: "7", stroke: C1, strokeWidth: "1" }))));
+};
 // Centered heading flanked symmetrically by ornaments.
 // Sizes: mobile gets a bump (per request), desktop/landscape kept at original V4 sizes.
 const FlankedHeading = ({ children, size = 'normal', long = false }) => (React.createElement("div", { className: "flex items-center justify-center gap-2 sm:gap-3 my-1 shrink-0" },
     React.createElement(FlankOrnament, { long: long }),
-    React.createElement("h2", { className: `font-display tracking-[0.18em] text-white uppercase whitespace-nowrap ${size === 'large' ? 'text-lg sm:text-2xl' : 'text-sm sm:text-base'}` }, children),
+    React.createElement("h2", { className: `${size === 'large' ? 'font-heading text-lg sm:text-2xl' : 'font-display text-sm sm:text-base tracking-[0.18em]'} text-white uppercase whitespace-nowrap` }, children),
     React.createElement(FlankOrnament, { flip: true, long: long })));
 // ---------- Main component ----------
 function App() {
@@ -238,7 +258,6 @@ function App() {
     const [titleDraft, setTitleDraft] = useState('');
     const [editingObjId, setEditingObjId] = useState(null);
     const [objDraft, setObjDraft] = useState('');
-    const [mobileView, setMobileView] = useState('list'); // 'list' | 'detail' — mobile master/detail nav
     const [newQuestTitle, setNewQuestTitle] = useState('');
     const [newQuestNote, setNewQuestNote] = useState('');
     const [newQuestType, setNewQuestType] = useState('side');
@@ -270,10 +289,6 @@ function App() {
         setEditingTitle(false);
         setEditingObjId(null);
     }, [state.selectedQuestId]);
-    // Reset mobile master/detail view when switching top-level tabs
-    useEffect(() => {
-        setMobileView('list');
-    }, [state.tab]);
     // Clear loading overlay when app successfully mounts
     useEffect(() => {
         const el = document.getElementById('app-loading');
@@ -338,10 +353,6 @@ function App() {
         setState((prev) => (Object.assign(Object.assign({}, prev), { quests: prev.quests.map((q) => (q.id === questId ? Object.assign(Object.assign({}, q), { active: !q.active }) : q)) })));
     };
     const selectQuest = (id) => setState((prev) => (Object.assign(Object.assign({}, prev), { selectedQuestId: id })));
-    const selectQuestMobile = (id) => {
-        selectQuest(id);
-        setMobileView('detail');
-    };
     const addQuest = () => {
         if (!newQuestTitle.trim())
             return;
@@ -444,11 +455,11 @@ function App() {
     };
     return (React.createElement("div", { className: "h-full w-full text-white relative bg-[#050607] overflow-hidden" },
         React.createElement("style", null, `
-        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Oswald:wght@300;400;500;600;700&display=swap');
         html, body { height: 100%; margin: 0; padding: 0; background: #050607; overflow: hidden; }
         body {
-          padding-top: calc(env(safe-area-inset-top) + 6px);
-          padding-bottom: calc(env(safe-area-inset-bottom) + 6px);
+          padding-top: env(safe-area-inset-top);
+          padding-bottom: env(safe-area-inset-bottom);
           padding-left: env(safe-area-inset-left);
           padding-right: env(safe-area-inset-right);
           -webkit-tap-highlight-color: transparent;
@@ -457,6 +468,8 @@ function App() {
         #root { height: 100%; }
         .font-display { font-family: 'Oswald', 'Eurostile', 'Futura Condensed', 'Arial Narrow', sans-serif; }
         .font-body { font-family: 'Oswald', 'Eurostile', 'Futura Condensed', 'Arial Narrow', sans-serif; font-weight: 300; }
+        .font-heading { font-family: 'Cinzel', 'Palatino', 'Times New Roman', serif; letter-spacing: 0.12em; }
+        .skyrim-border { border-color: rgba(200,185,155,0.5); }
         .bg-vignette {
           background: radial-gradient(ellipse at 50% 35%, rgba(35,42,40,0.55) 0%, rgba(8,10,11,0.96) 55%, #000 100%);
         }
@@ -519,17 +532,17 @@ function App() {
             React.createElement("div", { className: "flex justify-end gap-3" },
                 React.createElement(SkyrimButton, { onClick: () => setConfirmDelete(null), variant: "ghost" }, "\u041E\u0422\u041C\u0415\u041D\u0410"),
                 React.createElement(SkyrimButton, { onClick: () => deleteQuest(confirmDelete.id), variant: "danger" }, "\u0423\u0414\u0410\u041B\u0418\u0422\u042C")))),
-        React.createElement("div", { className: "h-full bg-vignette flex flex-col items-center p-3 sm:p-4 font-body" },
-            React.createElement("div", { className: "relative w-full max-w-5xl h-full rounded-2xl sm:rounded-[28px] border border-white/45 bg-black/80 overflow-hidden flex flex-col" },
+        React.createElement("div", { className: "h-full bg-vignette flex flex-col items-center p-0 sm:p-4 font-body" },
+            React.createElement("div", { className: "relative w-full max-w-5xl h-full rounded-none sm:rounded-[28px] border border-[rgba(200,185,155,0.5)] bg-black/90 overflow-hidden flex flex-col" },
                 React.createElement(CornerFlourish, { corner: "tl" }),
                 React.createElement(CornerFlourish, { corner: "tr" }),
                 React.createElement(CornerFlourish, { corner: "bl" }),
                 React.createElement(CornerFlourish, { corner: "br" }),
                 React.createElement("div", { className: "shrink-0 px-4 sm:px-10 pt-3 sm:pt-4 pb-2 sm:pb-3" },
-                    React.createElement("div", { className: "border border-white/30 px-4 py-2 sm:py-2.5" },
+                    React.createElement("div", { className: "border border-[rgba(200,185,155,0.35)] px-4 py-2 sm:py-2.5" },
                         React.createElement("div", { className: "flex items-center justify-center gap-6 sm:gap-16" }, TABS.map((tabDef, i) => (React.createElement("button", { key: tabDef.key, onClick: () => setState((p) => (Object.assign(Object.assign({}, p), { tab: tabDef.key }))), className: "flex items-center gap-2 group" },
                             i === 0 && React.createElement(ArrowMark, { direction: "left", active: state.tab === tabDef.key }),
-                            React.createElement("span", { className: `font-display text-sm sm:text-base tracking-[0.2em] sm:tracking-[0.25em] ${state.tab === tabDef.key ? 'text-white' : 'text-white/35 group-hover:text-white/70'}` }, tabDef.label),
+                            React.createElement("span", { className: `font-display text-sm sm:text-base tracking-[0.2em] sm:tracking-[0.25em] ${state.tab === tabDef.key ? 'text-[#d8ccb0]' : 'text-[rgba(200,185,155,0.35)] group-hover:text-[rgba(200,185,155,0.7)]'}` }, tabDef.label),
                             i === 0 && React.createElement(ArrowMark, { direction: "right", active: state.tab === tabDef.key }))))))),
                 React.createElement(DoubleBar, null),
                 React.createElement("div", { key: state.tab, className: "anim-panel flex-1 min-h-0 overflow-hidden" },
@@ -540,12 +553,11 @@ function App() {
                             React.createElement(VerticalDoubleBar, null),
                             React.createElement("div", { key: (selectedQuest === null || selectedQuest === void 0 ? void 0 : selectedQuest.id) || 'none', className: "anim-panel flex-1 h-full overflow-hidden" },
                                 React.createElement(QuestDetailPanel, { quest: selectedQuest, questXp: questXp, questBonus: questBonus, titleEdit: titleEdit, noteEdit: noteEdit, objEdit: objEdit, onToggleObjective: toggleObjective, onDeleteObjective: deleteObjective, onAddObjective: () => setAddObjOpen(true) }))),
-                        React.createElement("div", { className: "sm:hidden relative h-full overflow-hidden" },
-                            React.createElement("div", { className: `absolute inset-0 h-full transition-transform duration-300 ease-out will-change-transform ${mobileView === 'detail' ? '-translate-x-full' : 'translate-x-0'}` },
-                                React.createElement(QuestListPanel, { activeMain: activeMain, activeMisc: activeMisc, completed: completedQuests, selectedId: selectedQuest === null || selectedQuest === void 0 ? void 0 : selectedQuest.id, onSelect: selectQuestMobile, onAddQuest: () => setAddQuestOpen(true), isEmpty: state.quests.length === 0 })),
-                            React.createElement("div", { className: `absolute inset-0 h-full transition-transform duration-300 ease-out will-change-transform ${mobileView === 'detail' ? 'translate-x-0' : 'translate-x-full'}` },
-                                React.createElement("div", { key: (selectedQuest === null || selectedQuest === void 0 ? void 0 : selectedQuest.id) || 'none', className: "anim-panel h-full overflow-hidden" },
-                                    React.createElement(QuestDetailPanel, { quest: selectedQuest, questXp: questXp, questBonus: questBonus, titleEdit: titleEdit, noteEdit: noteEdit, objEdit: objEdit, onToggleObjective: toggleObjective, onDeleteObjective: deleteObjective, onAddObjective: () => setAddObjOpen(true), onBack: () => setMobileView('list') })))))),
+                        React.createElement("div", { className: "sm:hidden flex flex-col h-full overflow-hidden" },
+                            React.createElement("div", { className: "h-[42%] shrink-0 overflow-hidden border-b border-[rgba(200,185,155,0.2)]" },
+                                React.createElement(QuestListPanel, { activeMain: activeMain, activeMisc: activeMisc, completed: completedQuests, selectedId: selectedQuest === null || selectedQuest === void 0 ? void 0 : selectedQuest.id, onSelect: selectQuest, onAddQuest: () => setAddQuestOpen(true), isEmpty: state.quests.length === 0 })),
+                            React.createElement("div", { key: (selectedQuest === null || selectedQuest === void 0 ? void 0 : selectedQuest.id) || 'none', className: "anim-panel flex-1 min-h-0 overflow-hidden" },
+                                React.createElement(QuestDetailPanel, { quest: selectedQuest, questXp: questXp, questBonus: questBonus, titleEdit: titleEdit, noteEdit: noteEdit, objEdit: objEdit, onToggleObjective: toggleObjective, onDeleteObjective: deleteObjective, onAddObjective: () => setAddObjOpen(true) }))))),
                     state.tab === 'stats' && (React.createElement("div", { className: "h-full overflow-y-auto overscroll-contain px-4 sm:px-10 py-4 sm:py-6" },
                         React.createElement(FlankedHeading, { size: "large", long: true }, "\u0421\u0432\u043E\u0434\u043A\u0430 \u043F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430"),
                         React.createElement("p", { className: "text-base sm:text-base leading-snug text-white/95 mb-2 mt-2 max-w-2xl font-body" }, "\u0423\u0440\u043E\u0432\u0435\u043D\u044C \u0440\u0430\u0441\u0442\u0451\u0442 \u0437\u0430 \u0441\u0447\u0451\u0442 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043D\u044B\u0445 \u0437\u0430\u0434\u0430\u0447 \u0438 \u0437\u0430\u0434\u0430\u043D\u0438\u0439. \u041A\u0430\u0436\u0434\u0430\u044F \u0437\u0430\u0434\u0430\u0447\u0430 \u0434\u0430\u0451\u0442 \u0441\u0442\u043E\u043B\u044C\u043A\u043E \u043E\u043F\u044B\u0442\u0430, \u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0443\u043A\u0430\u0437\u0430\u043D\u043E \u0434\u043B\u044F \u0437\u0430\u0434\u0430\u043D\u0438\u044F, \u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 \u0432\u0441\u0435\u0433\u043E \u0437\u0430\u0434\u0430\u043D\u0438\u044F \u043F\u0440\u0438\u043D\u043E\u0441\u0438\u0442 \u0441\u0443\u043C\u043C\u0430\u0440\u043D\u044B\u0439 \u043E\u043F\u044B\u0442 \u0432\u0441\u0435\u0445 \u0435\u0433\u043E \u0437\u0430\u0434\u0430\u0447."),
@@ -569,13 +581,13 @@ function App() {
                                 React.createElement(StatRow, { label: "\u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E", value: `${percent}%` }))))),
                     state.tab === 'system' && (React.createElement(SystemTab, { state: state, setState: setState }))),
                 React.createElement(DoubleBar, null),
-                React.createElement("div", { className: "shrink-0 px-4 sm:px-10 py-2 sm:py-2.5 flex items-center justify-between text-xs sm:text-xs font-display" },
+                React.createElement("div", { className: "shrink-0 px-4 sm:px-10 py-2 sm:py-2.5 flex items-center justify-between text-xs sm:text-xs font-display text-[rgba(200,185,155,0.6)]" },
                     React.createElement("div", { className: "flex gap-4 sm:gap-6" },
-                        state.tab === 'quests' && selectedQuest && (React.createElement("button", { onClick: () => toggleActive(selectedQuest.id), className: "tracking-[0.15em] text-white/55 hover:text-white" },
+                        state.tab === 'quests' && selectedQuest && (React.createElement("button", { onClick: () => toggleActive(selectedQuest.id), className: "tracking-[0.15em] text-[rgba(200,185,155,0.55)] hover:text-[rgba(220,210,185,1)]" },
                             React.createElement("span", { className: "border border-white/30 px-1.5 py-0.5 mr-1" }, "Enter"),
                             React.createElement("span", { className: "hidden sm:inline" }, selectedQuest.active ? 'Снять отслеживание' : 'Отслеживать'))),
-                        state.tab === 'quests' && selectedQuest && (React.createElement("button", { onClick: () => setConfirmDelete(selectedQuest), className: "tracking-[0.15em] text-white/35 hover:text-red-300" }, "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"))),
-                    React.createElement("span", { className: "tracking-[0.15em] text-white/55 truncate" },
+                        state.tab === 'quests' && selectedQuest && (React.createElement("button", { onClick: () => setConfirmDelete(selectedQuest), className: "tracking-[0.15em] text-[rgba(200,185,155,0.35)] hover:text-red-300" }, "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"))),
+                    React.createElement("span", { className: "tracking-[0.15em] text-[rgba(200,185,155,0.5)] truncate" },
                         dayName,
                         ", ",
                         timeStr,
